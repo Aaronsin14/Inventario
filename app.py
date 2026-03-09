@@ -9,8 +9,8 @@ UPLOAD = "static/uploads"
 if not os.path.exists(UPLOAD):
     os.makedirs(UPLOAD)
 
-# conexión a postgres usando variable de render
-DATABASE_URL = os.environ.get("postgresql://inventario_user:VG0AF852QrAB0xMr9lRWlyWnpybQBTNA@dpg-d6nhomh5pdvs73bin8og-a/inventario_4oa6")
+# conexión a postgres usando variable de entorno de Render
+DATABASE_URL = os.environ.get("DATABASE_URL")
 
 conn = psycopg2.connect(DATABASE_URL)
 cursor = conn.cursor()
@@ -122,5 +122,5 @@ def eliminar(id):
 
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
+    port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
