@@ -10,7 +10,7 @@ if not os.path.exists(UPLOAD):
     os.makedirs(UPLOAD)
 
 # conexión a postgres usando variable de render
-DATABASE_URL = os.environ.get("DATABASE_URL")
+DATABASE_URL = os.environ.get("postgresql://inventario_user:VG0AF852QrAB0xMr9lRWlyWnpybQBTNA@dpg-d6nhomh5pdvs73bin8og-a/inventario_4oa6")
 
 conn = psycopg2.connect(DATABASE_URL)
 cursor = conn.cursor()
