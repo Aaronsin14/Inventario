@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+<title>Sistema de Inventario</title>
+<link rel="stylesheet" href="/static/style.css">
+
+</head>
+
+<body>
+
+<h1>Sistema de Inventario</h1>
+
+<input type="text" id="buscar" placeholder="🔎 Buscar por nombre o código">
+
+<form id="form">
+
+<input type="text" name="codigo" placeholder="Código del producto" required>
+
+<input type="text" name="nombre" placeholder="Nombre del producto" required>
+
+<input type="text" name="descripcion" placeholder="Descripción">
+
+<input type="text" name="marca" placeholder="Marca">
+
+<input type="number" name="cantidad" placeholder="Cantidad" required>
+
+<input type="file" name="foto">
+
+<button>Agregar Producto</button>
+
+</form>
+
+<div id="lista"></div>
+
+<script src="/static/script.js"></script>
+
+</body>
+
+</html>
