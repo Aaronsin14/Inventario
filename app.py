@@ -9,10 +9,11 @@ UPLOAD = "static/uploads"
 if not os.path.exists(UPLOAD):
     os.makedirs(UPLOAD)
 
-# conexión a postgres usando variable de entorno de Render
-DATABASE_URL = os.environ.get("DATABASE_URL")
+# obtener url de base de datos desde render
+DATABASE_URL = os.getenv("DATABASE_URL")
 
-conn = psycopg2.connect(DATABASE_URL)
+# conexión segura para render
+conn = psycopg2.connect(DATABASE_URL, sslmode="require")
 cursor = conn.cursor()
 
 # crear tabla si no existe
