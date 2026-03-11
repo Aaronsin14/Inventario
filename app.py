@@ -364,7 +364,7 @@ def api_dashboard():
 
             cursor.execute("""
             SELECT 
-            DATE(fecha) as dia,
+            DATE(COALESCE(fecha, CURRENT_TIMESTAMP)) as dia,
             SUM(cantidad) as unidades,
             SUM(total) as ganancias
             FROM ventas
