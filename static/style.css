@@ -301,11 +301,13 @@ th{
 background:#2c7be5;
 color:white;
 padding:12px;
+text-align:center;
 }
 
 td{
 padding:10px;
 border-bottom:1px solid #eee;
+text-align:center;
 }
 
 tr:hover{
