@@ -338,3 +338,9 @@ text-align:center;
 .tabla tr:hover{
 background:#f5f7fa;
 }
+
+.tabla th,
+.tabla td{
+    text-align: center;
+    vertical-align: middle;
+}
