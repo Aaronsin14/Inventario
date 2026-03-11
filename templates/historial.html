@@ -1,0 +1,97 @@
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Historial de Ventas</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body>
+
+<nav class="navbar">
+    <div class="logo">🚗 Inventario AutoPartes</div>
+    <div class="menu">
+        <a href="/">🏠 Inicio</a>
+        <a href="/agregar">📦 Añadir Stock</a>
+        <a href="/inventario">📋 Ver Inventario</a>
+        <a href="/vender">💰 Vender</a>
+        <a href="/historial">📝 Historial</a>
+        <a href="/dashboard">📊 Dashboard</a>
+    </div>
+</nav>
+
+<h1>📝 Historial de Ventas</h1>
+
+<input 
+    type="text" 
+    id="buscarVenta" 
+    placeholder="🔎 Buscar producto..." 
+    style="padding:10px;margin-bottom:20px;width:300px"
+>
+
+<table class="tabla">
+
+<thead>
+<tr>
+<th>Producto</th>
+<th>Cantidad</th>
+<th>Precio Unitario</th>
+<th>Total</th>
+<th>Fecha</th>
+</tr>
+</thead>
+
+<tbody id="tablaHistorial"></tbody>
+
+</table>
+
+<script>
+
+async function cargarHistorial(){
+
+const res = await fetch("/api/historial")
+const data = await res.json()
+
+const tabla = document.getElementById("tablaHistorial")
+
+tabla.innerHTML=""
+
+data.forEach(v=>{
+
+tabla.innerHTML += `
+
+<tr>
+<td>${v.producto}</td>
+<td>${v.cantidad}</td>
+<td>$${Number(v.precio_unitario).toLocaleString()}</td>
+<td>$${Number(v.total).toLocaleString()}</td>
+<td>${v.fecha}</td>
+</tr>
+
+`
+
+})
+
+}
+
+document.getElementById("buscarVenta").addEventListener("keyup",function(){
+
+let texto = this.value.toLowerCase()
+
+document.querySelectorAll("#tablaHistorial tr").forEach(row=>{
+
+row.style.display = row.innerText.toLowerCase().includes(texto)
+? ""
+: "none"
+
+})
+
+})
+
+cargarHistorial()
+
+</script>
+
+</body>
+</html>
+```

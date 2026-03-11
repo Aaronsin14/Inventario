@@ -9,42 +9,105 @@ UPLOAD = "static/uploads"
 if not os.path.exists(UPLOAD):
     os.makedirs(UPLOAD)
 
-# obtener url de base de datos desde render
-DATABASE_URL = os.getenv("DATABASE_URL")
+# -------------------------
+# CONEXIÓN BASE DE DATOS
+# -------------------------
 
-# conexión segura para render
+DATABASE_URL = os.getenv("DATABASE_URL") or "postgresql://inventario_user:VG0AF852QrAB0xMr9lRWlyWnpybQBTNA@dpg-d6nhomh5pdvs73bin8og-a.oregon-postgres.render.com/inventario_4oa6"
+
 conn = psycopg2.connect(DATABASE_URL, sslmode="require")
-cursor = conn.cursor()
 
-# crear tabla si no existe
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS productos(
-id SERIAL PRIMARY KEY,
-codigo VARCHAR(50),
-nombre VARCHAR(100),
-descripcion TEXT,
-marca VARCHAR(100),
-cantidad INTEGER,
-foto TEXT
-)
-""")
-conn.commit()
+# -------------------------
+# CREAR TABLAS
+# -------------------------
 
+with conn.cursor() as cursor:
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS productos(
+        id SERIAL PRIMARY KEY,
+        codigo VARCHAR(50),
+        nombre VARCHAR(100),
+        descripcion TEXT,
+        marca VARCHAR(100),
+        cantidad INTEGER,
+        precio NUMERIC,
+        precio_minimo NUMERIC,
+        foto TEXT
+    )
+    """)
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS ventas(
+        id SERIAL PRIMARY KEY,
+        producto_id INTEGER REFERENCES productos(id),
+        nombre_producto VARCHAR(100),
+        cantidad INTEGER,
+        precio_unitario NUMERIC,
+        total NUMERIC,
+        fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
+    conn.commit()
+
+
+# -------------------------
+# PAGINAS
+# -------------------------
 
 @app.route("/")
-def index():
-    return render_template("index.html")
+def inicio():
+    return render_template("inicio.html")
 
+
+@app.route("/agregar")
+def agregar_pagina():
+    return render_template("agregar.html")
+
+
+@app.route("/inventario")
+def inventario():
+    return render_template("inventario.html")
+
+
+@app.route("/vender")
+def vender_pagina():
+    return render_template("vender.html")
+
+
+@app.route("/historial")
+def historial_pagina():
+    return render_template("historial.html")
+
+
+@app.route("/dashboard")
+def dashboard_pagina():
+    return render_template("dashboard.html")
+
+
+# -------------------------
+# OBTENER PRODUCTOS
+# -------------------------
 
 @app.route("/productos")
 def productos():
 
-    cursor.execute("SELECT * FROM productos ORDER BY id DESC")
-    rows = cursor.fetchall()
+    with conn.cursor() as cursor:
+
+        cursor.execute("""
+        SELECT id,codigo,nombre,descripcion,marca,
+        cantidad,precio,precio_minimo,foto
+        FROM productos
+        ORDER BY id DESC
+        """)
+
+        rows = cursor.fetchall()
 
     productos = []
 
     for r in rows:
+
         productos.append({
             "id": r[0],
             "codigo": r[1],
@@ -52,76 +115,286 @@ def productos():
             "descripcion": r[3],
             "marca": r[4],
             "cantidad": r[5],
-            "foto": r[6]
+            "precio": float(r[6]) if r[6] else 0,
+            "precio_minimo": float(r[7]) if r[7] else 0,
+            "foto": r[8]
         })
 
     return jsonify(productos)
 
 
-@app.route("/agregar", methods=["POST"])
-def agregar():
+# -------------------------
+# AGREGAR PRODUCTO
+# -------------------------
 
-    codigo = request.form["codigo"]
-    nombre = request.form["nombre"]
-    descripcion = request.form["descripcion"]
-    marca = request.form["marca"]
-    cantidad = int(request.form["cantidad"])
-    foto = request.files["foto"]
+@app.route("/agregar_producto", methods=["POST"])
+def agregar_producto():
 
-    ruta = ""
+    try:
 
-    if foto and foto.filename != "":
-        ruta = os.path.join(UPLOAD, foto.filename)
-        foto.save(ruta)
+        codigo = request.form.get("codigo")
+        nombre = request.form.get("nombre")
+        descripcion = request.form.get("descripcion")
+        marca = request.form.get("marca")
 
-    cursor.execute("""
-    INSERT INTO productos
-    (codigo,nombre,descripcion,marca,cantidad,foto)
-    VALUES (%s,%s,%s,%s,%s,%s)
-    """,(codigo,nombre,descripcion,marca,cantidad,ruta))
+        cantidad = int(request.form.get("cantidad") or 0)
+        precio = float(request.form.get("precio") or 0)
+        precio_minimo = float(request.form.get("precio_minimo") or 0)
 
-    conn.commit()
+        foto = request.files.get("foto")
 
-    return jsonify({"mensaje":"ok"})
+        ruta = ""
 
+        if foto and foto.filename != "":
+            nombre_foto = foto.filename
+            ruta = "/static/uploads/" + nombre_foto
+            foto.save(os.path.join(UPLOAD, nombre_foto))
+
+        with conn.cursor() as cursor:
+
+            cursor.execute("""
+            INSERT INTO productos
+            (codigo,nombre,descripcion,marca,cantidad,precio,precio_minimo,foto)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
+            """,(codigo,nombre,descripcion,marca,cantidad,precio,precio_minimo,ruta))
+
+            conn.commit()
+
+        return jsonify({"mensaje":"ok"})
+
+    except Exception as e:
+
+        conn.rollback()
+        print(e)
+
+        return jsonify({"mensaje":"error"}),500
+
+
+# -------------------------
+# SUMAR STOCK
+# -------------------------
 
 @app.route("/sumar/<int:id>", methods=["POST"])
 def sumar(id):
 
-    cursor.execute("""
-    UPDATE productos
-    SET cantidad = cantidad + 1
-    WHERE id = %s
-    """,(id,))
+    try:
 
-    conn.commit()
+        with conn.cursor() as cursor:
 
-    return jsonify({"mensaje":"sumado"})
+            cursor.execute("""
+            UPDATE productos
+            SET cantidad = cantidad + 1
+            WHERE id = %s
+            """,(id,))
 
+            conn.commit()
+
+        return jsonify({"mensaje":"sumado"})
+
+    except Exception as e:
+
+        conn.rollback()
+        print(e)
+
+        return jsonify({"mensaje":"error"}),500
+
+
+# -------------------------
+# RESTAR STOCK
+# -------------------------
 
 @app.route("/restar/<int:id>", methods=["POST"])
 def restar(id):
 
-    cursor.execute("""
-    UPDATE productos
-    SET cantidad = GREATEST(cantidad - 1,0)
-    WHERE id = %s
-    """,(id,))
+    try:
 
-    conn.commit()
+        with conn.cursor() as cursor:
 
-    return jsonify({"mensaje":"restado"})
+            cursor.execute("""
+            UPDATE productos
+            SET cantidad = GREATEST(cantidad - 1,0)
+            WHERE id = %s
+            """,(id,))
 
+            conn.commit()
+
+        return jsonify({"mensaje":"restado"})
+
+    except Exception as e:
+
+        conn.rollback()
+        print(e)
+
+        return jsonify({"mensaje":"error"}),500
+
+
+# -------------------------
+# ELIMINAR PRODUCTO
+# -------------------------
 
 @app.route("/eliminar/<int:id>", methods=["DELETE"])
 def eliminar(id):
 
-    cursor.execute("DELETE FROM productos WHERE id = %s",(id,))
-    conn.commit()
+    try:
 
-    return jsonify({"mensaje":"eliminado"})
+        with conn.cursor() as cursor:
 
+            cursor.execute("DELETE FROM productos WHERE id=%s",(id,))
+
+            conn.commit()
+
+        return jsonify({"mensaje":"eliminado"})
+
+    except Exception as e:
+
+        conn.rollback()
+        print(e)
+
+        return jsonify({"mensaje":"error"}),500
+
+
+# -------------------------
+# VENDER PRODUCTO
+# -------------------------
+
+@app.route("/vender_producto", methods=["POST"])
+def vender_producto():
+
+    try:
+
+        data = request.get_json()
+
+        id = int(data["id"])
+        cantidad = int(data["cantidad"])
+        precio_especial = float(data.get("precio") or 0)
+
+        with conn.cursor() as cursor:
+
+            cursor.execute("""
+            SELECT nombre,precio,cantidad
+            FROM productos
+            WHERE id=%s
+            """,(id,))
+
+            row = cursor.fetchone()
+
+            if not row:
+                return jsonify({"mensaje":"Producto no encontrado"}),404
+
+            nombre_producto = row[0]
+            precio_real = float(row[1])
+            stock_actual = int(row[2])
+
+            if cantidad > stock_actual:
+                return jsonify({"mensaje":"Stock insuficiente"}),400
+
+            precio_unitario = precio_especial if precio_especial > 0 else precio_real
+
+            total_venta = precio_unitario * cantidad
+
+            cursor.execute("""
+            UPDATE productos
+            SET cantidad = cantidad - %s
+            WHERE id = %s
+            """,(cantidad,id))
+
+            cursor.execute("""
+            INSERT INTO ventas
+            (producto_id,nombre_producto,cantidad,precio_unitario,total)
+            VALUES (%s,%s,%s,%s,%s)
+            """,(id,nombre_producto,cantidad,precio_unitario,total_venta))
+
+            conn.commit()
+
+        return jsonify({"mensaje":"venta realizada"})
+
+    except Exception as e:
+
+        conn.rollback()
+        print("ERROR:",e)
+
+        return jsonify({"mensaje":"Error en la venta"}),500
+
+
+# -------------------------
+# HISTORIAL
+# -------------------------
+
+@app.route("/api/historial")
+def api_historial():
+
+    with conn.cursor() as cursor:
+
+        cursor.execute("""
+        SELECT nombre_producto,cantidad,precio_unitario,total,fecha
+        FROM ventas
+        ORDER BY fecha DESC
+        LIMIT 100
+        """)
+
+        rows = cursor.fetchall()
+
+    historial = []
+
+    for r in rows:
+
+        fecha = r[4]
+
+        historial.append({
+            "producto": r[0],
+            "cantidad": r[1],
+            "precio_unitario": float(r[2]),
+            "total": float(r[3]),
+            "fecha": fecha.strftime("%Y-%m-%d %H:%M") if fecha else ""
+        })
+
+    return jsonify(historial)
+
+
+# -------------------------
+# DASHBOARD
+# -------------------------
+
+@app.route("/api/dashboard")
+def api_dashboard():
+
+    with conn.cursor() as cursor:
+
+        cursor.execute("""
+        SELECT DATE_TRUNC('week', fecha) as semana,
+        SUM(cantidad) as unidades,
+        SUM(total) as ganancias
+        FROM ventas
+        WHERE fecha IS NOT NULL
+        GROUP BY semana
+        ORDER BY semana DESC
+        LIMIT 12
+        """)
+
+        rows = cursor.fetchall()
+
+    data = []
+
+    for r in rows:
+
+        if r[0] is None:
+            continue
+
+        data.append({
+            "semana": r[0].strftime("%Y-%m-%d"),
+            "total_unidades": int(r[1] or 0),
+            "total_ganancias": float(r[2] or 0)
+        })
+
+    return jsonify(data)
+
+
+# -------------------------
+# SERVIDOR
+# -------------------------
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
+
+    port = int(os.environ.get("PORT",10000))
+
+    app.run(host="0.0.0.0",port=port)

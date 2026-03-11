@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<title>Vender Productos</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body>
+
+<nav class="navbar">
+<div class="logo">🚗 Inventario AutoPartes</div>
+
+<div class="menu">
+<a href="/">🏠 Inicio</a>
+<a href="/agregar">📦 Añadir Stock</a>
+<a href="/inventario">📋 Ver Inventario</a>
+<a href="/vender">💰 Vender</a>
+<a href="/historial">📝 Historial</a>
+<a href="/dashboard">📊 Dashboard</a>
+</div>
+</nav>
+
+<h1>💰 Vender Productos</h1>
+
+<input 
+type="text"
+id="buscarProducto"
+placeholder="🔎 Buscar producto..."
+style="padding:10px;margin-bottom:20px;width:300px"
+>
+
+<div id="lista"></div>
+
+<script src="/static/vender.js"></script>
+
+</body>
+</html>

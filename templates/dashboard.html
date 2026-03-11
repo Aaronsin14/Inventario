@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Dashboard Ventas</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body>
+
+<nav class="navbar">
+<div class="logo">🚗 Inventario AutoPartes</div>
+<div class="menu">
+<a href="/">🏠 Inicio</a>
+<a href="/agregar">📦 Añadir Stock</a>
+<a href="/inventario">📋 Ver Inventario</a>
+<a href="/vender">💰 Vender</a>
+<a href="/historial">📝 Historial</a>
+</div>
+</nav>
+
+<h1>📊 Dashboard de Ventas</h1>
+
+<div class="cards">
+
+<div class="card">
+<h3>Ventas Totales</h3>
+<p id="ventasTotales">0</p>
+</div>
+
+<div class="card">
+<h3>Unidades Vendidas</h3>
+<p id="unidadesTotales">0</p>
+</div>
+
+</div>
+
+<table id="tabla-dashboard">
+<thead>
+<tr>
+<th>Semana</th>
+<th>Unidades</th>
+<th>Ganancias</th>
+</tr>
+</thead>
+
+<tbody></tbody>
+</table>
+
+<script>
+
+async function cargarDashboard(){
+
+const res = await fetch("/api/dashboard")
+const data = await res.json()
+
+const tbody = document.querySelector("#tabla-dashboard tbody")
+
+tbody.innerHTML=""
+
+let ventas = 0
+let unidades = 0
+
+data.forEach(d=>{
+
+ventas += d.total_ganancias
+unidades += d.total_unidades
+
+tbody.innerHTML += `
+<tr>
+<td>${d.semana}</td>
+<td>${d.total_unidades}</td>
+<td>$${d.total_ganancias.toLocaleString()}</td>
+</tr>
+`
+
+})
+
+document.getElementById("ventasTotales").innerText = "$"+ventas.toLocaleString()
+document.getElementById("unidadesTotales").innerText = unidades
+
+}
+
+cargarDashboard()
+
+</script>
+
+</body>
+</html>

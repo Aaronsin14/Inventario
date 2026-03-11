@@ -3,6 +3,8 @@ const buscar = document.getElementById("buscar")
 
 async function cargar(){
 
+if(!lista) return
+
 const res = await fetch("/productos")
 const data = await res.json()
 
@@ -11,6 +13,9 @@ lista.innerHTML=""
 data.forEach(p=>{
 
 let stock = p.cantidad <=5 ? "stock-bajo" : ""
+
+let precio = Number(p.precio || 0).toLocaleString()
+let precio_minimo = Number(p.precio_minimo || 0).toLocaleString()
 
 lista.innerHTML += `
 
@@ -26,7 +31,11 @@ lista.innerHTML += `
 
 <p><b>Marca:</b> ${p.marca}</p>
 
-<p>${p.descripcion}</p>
+<p>${p.descripcion || ""}</p>
+
+<p><b>Precio:</b> $${precio}</p>
+
+<p><b>Precio mínimo:</b> $${precio_minimo}</p>
 
 <p class="stock ${stock}">Stock: ${p.cantidad}</p>
 
@@ -46,22 +55,20 @@ lista.innerHTML += `
 
 }
 
-document.getElementById("form").addEventListener("submit", async e=>{
+document.getElementById("form")?.addEventListener("submit", async e=>{
 
 e.preventDefault()
 
 const form = new FormData(e.target)
 
-await fetch("/agregar",{
-
+await fetch("/agregar_producto",{
 method:"POST",
 body:form
-
 })
 
-e.target.reset()
+alert("Producto agregado")
 
-cargar()
+e.target.reset()
 
 })
 
@@ -87,6 +94,8 @@ cargar()
 
 async function eliminar(id){
 
+if(!confirm("¿Eliminar producto?")) return
+
 await fetch("/eliminar/"+id,{
 method:"DELETE"
 })
@@ -95,7 +104,7 @@ cargar()
 
 }
 
-buscar.addEventListener("keyup",()=>{
+buscar?.addEventListener("keyup",()=>{
 
 let texto = buscar.value.toLowerCase()
 
