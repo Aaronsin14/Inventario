@@ -141,7 +141,7 @@ form button:hover {
 }
 
 .producto-info h3 {
-    color: var(--texto-titulos);
+    color: var(--primario);
     margin: 0 0 12px 0;
     font-size: 1.4rem;
 }

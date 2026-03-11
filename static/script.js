@@ -33,7 +33,10 @@ lista.innerHTML += `
 
 <p>${p.descripcion || ""}</p>
 
-<p><b>Precio:</b> $${precio}</p>
+<p>
+<b>Precio:</b> $${precio}
+<button onclick="editarPrecio(${p.id}, ${p.precio})">✏️</button>
+</p>
 
 <p><b>Precio mínimo:</b> $${precio_minimo}</p>
 
@@ -98,6 +101,26 @@ if(!confirm("¿Eliminar producto?")) return
 
 await fetch("/eliminar/"+id,{
 method:"DELETE"
+})
+
+cargar()
+
+}
+
+async function editarPrecio(id, precioActual){
+
+let nuevo = prompt("Nuevo precio:", precioActual)
+
+if(!nuevo) return
+
+await fetch("/editar_precio/"+id,{
+method:"POST",
+headers:{
+"Content-Type":"application/json"
+},
+body:JSON.stringify({
+precio:nuevo
+})
 })
 
 cargar()
