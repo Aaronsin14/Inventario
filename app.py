@@ -358,35 +358,40 @@ def api_historial():
 @app.route("/api/dashboard")
 def api_dashboard():
 
-    with conn.cursor() as cursor:
+    try:
 
-        cursor.execute("""
-        SELECT DATE_TRUNC('week', fecha) as semana,
-        SUM(cantidad) as unidades,
-        SUM(total) as ganancias
-        FROM ventas
-        WHERE fecha IS NOT NULL
-        GROUP BY semana
-        ORDER BY semana DESC
-        LIMIT 12
-        """)
+        with conn.cursor() as cursor:
 
-        rows = cursor.fetchall()
+            cursor.execute("""
+            SELECT 
+            DATE(fecha) as dia,
+            SUM(cantidad) as unidades,
+            SUM(total) as ganancias
+            FROM ventas
+            GROUP BY dia
+            ORDER BY dia DESC
+            LIMIT 30
+            """)
 
-    data = []
+            rows = cursor.fetchall()
 
-    for r in rows:
+        data = []
 
-        if r[0] is None:
-            continue
+        for r in rows:
 
-        data.append({
-            "semana": r[0].strftime("%Y-%m-%d"),
-            "total_unidades": int(r[1] or 0),
-            "total_ganancias": float(r[2] or 0)
-        })
+            data.append({
+                "semana": str(r[0]),
+                "total_unidades": int(r[1] or 0),
+                "total_ganancias": float(r[2] or 0)
+            })
 
-    return jsonify(data)
+        return jsonify(data)
+
+    except Exception as e:
+
+        print("ERROR DASHBOARD:", e)
+
+        return jsonify([])
 
 
 # -------------------------
