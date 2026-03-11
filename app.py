@@ -1,6 +1,8 @@
 from flask import Flask, render_template, request, jsonify
 import psycopg2
+from psycopg2 import sql
 import os
+import sys
 
 app = Flask(__name__)
 
@@ -9,118 +11,319 @@ UPLOAD = "static/uploads"
 if not os.path.exists(UPLOAD):
     os.makedirs(UPLOAD)
 
-# obtener url de base de datos desde render
+# -------------------------
+# CONEXIÓN BASE DE DATOS
+# -------------------------
+
 DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    print("ERROR: La variable de entorno DATABASE_URL no está configurada", file=sys.stderr)
+    sys.exit(1)
 
-# conexión segura para render
-conn = psycopg2.connect(DATABASE_URL, sslmode="require")
-cursor = conn.cursor()
+# Función para obtener conexión
+def get_conn():
+    try:
+        conn = psycopg2.connect(DATABASE_URL, sslmode="require")
+        return conn
+    except Exception as e:
+        print("ERROR conectando a la base de datos:", e, file=sys.stderr)
+        raise e
 
-# crear tabla si no existe
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS productos(
-id SERIAL PRIMARY KEY,
-codigo VARCHAR(50),
-nombre VARCHAR(100),
-descripcion TEXT,
-marca VARCHAR(100),
-cantidad INTEGER,
-foto TEXT
-)
-""")
-conn.commit()
+# -------------------------
+# CREAR TABLAS SI NO EXISTEN
+# -------------------------
+try:
+    with get_conn() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute("""
+            CREATE TABLE IF NOT EXISTS productos(
+                id SERIAL PRIMARY KEY,
+                codigo VARCHAR(50),
+                nombre VARCHAR(100),
+                descripcion TEXT,
+                marca VARCHAR(100),
+                cantidad INTEGER,
+                precio NUMERIC,
+                precio_minimo NUMERIC,
+                foto TEXT
+            )
+            """)
+            cursor.execute("""
+            CREATE TABLE IF NOT EXISTS ventas(
+                id SERIAL PRIMARY KEY,
+                producto_id INTEGER REFERENCES productos(id),
+                nombre_producto VARCHAR(100),
+                cantidad INTEGER,
+                precio_unitario NUMERIC,
+                total NUMERIC,
+                fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            """)
+except Exception as e:
+    print("ERROR creando tablas:", e, file=sys.stderr)
+    sys.exit(1)
 
+# -------------------------
+# RUTAS DE PÁGINAS
+# -------------------------
 
 @app.route("/")
-def index():
-    return render_template("index.html")
+def inicio():
+    return render_template("inicio.html")
 
+@app.route("/agregar")
+def agregar():
+    return render_template("agregar.html")
+
+@app.route("/inventario")
+def inventario():
+    return render_template("inventario.html")
+
+@app.route("/vender")
+def vender():
+    return render_template("vender.html")
+
+@app.route("/historial")
+def historial():
+    return render_template("historial.html")
+
+@app.route("/dashboard")
+def dashboard():
+    return render_template("dashboard.html")
+
+# -------------------------
+# API PRODUCTOS
+# -------------------------
 
 @app.route("/productos")
 def productos():
+    try:
+        with get_conn() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                SELECT id, codigo, nombre, descripcion, marca, cantidad, precio, precio_minimo, foto
+                FROM productos
+                ORDER BY id DESC
+                """)
+                rows = cursor.fetchall()
 
-    cursor.execute("SELECT * FROM productos ORDER BY id DESC")
-    rows = cursor.fetchall()
+        productos = []
+        for r in rows:
+            productos.append({
+                "id": r[0],
+                "codigo": r[1],
+                "nombre": r[2],
+                "descripcion": r[3],
+                "marca": r[4],
+                "cantidad": r[5],
+                "precio": float(r[6]) if r[6] else 0,
+                "precio_minimo": float(r[7]) if r[7] else 0,
+                "foto": r[8]
+            })
 
-    productos = []
+        return jsonify(productos)
+    except Exception as e:
+        print("ERROR /productos:", e, file=sys.stderr)
+        return jsonify({"mensaje": "Error"}), 500
 
-    for r in rows:
-        productos.append({
-            "id": r[0],
-            "codigo": r[1],
-            "nombre": r[2],
-            "descripcion": r[3],
-            "marca": r[4],
-            "cantidad": r[5],
-            "foto": r[6]
-        })
+# -------------------------
+# EDITAR PRECIO
+# -------------------------
 
-    return jsonify(productos)
+@app.route("/editar_precio/<int:id>", methods=["POST"])
+def editar_precio(id):
+    try:
+        data = request.get_json()
+        precio = float(data["precio"])
 
+        with get_conn() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                UPDATE productos
+                SET precio=%s
+                WHERE id=%s
+                """, (precio, id))
+                conn.commit()
 
-@app.route("/agregar", methods=["POST"])
-def agregar():
+        return jsonify({"mensaje": "Precio actualizado"})
+    except Exception as e:
+        print(f"ERROR /editar_precio/{id}:", e, file=sys.stderr)
+        return jsonify({"mensaje": "Error"}), 500
 
-    codigo = request.form["codigo"]
-    nombre = request.form["nombre"]
-    descripcion = request.form["descripcion"]
-    marca = request.form["marca"]
-    cantidad = int(request.form["cantidad"])
-    foto = request.files["foto"]
-
-    ruta = ""
-
-    if foto and foto.filename != "":
-        ruta = os.path.join(UPLOAD, foto.filename)
-        foto.save(ruta)
-
-    cursor.execute("""
-    INSERT INTO productos
-    (codigo,nombre,descripcion,marca,cantidad,foto)
-    VALUES (%s,%s,%s,%s,%s,%s)
-    """,(codigo,nombre,descripcion,marca,cantidad,ruta))
-
-    conn.commit()
-
-    return jsonify({"mensaje":"ok"})
-
+# -------------------------
+# SUMAR STOCK
+# -------------------------
 
 @app.route("/sumar/<int:id>", methods=["POST"])
 def sumar(id):
+    try:
+        with get_conn() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                UPDATE productos
+                SET cantidad=cantidad+1
+                WHERE id=%s
+                """, (id,))
+                conn.commit()
+        return jsonify({"mensaje": "ok"})
+    except Exception as e:
+        print(f"ERROR /sumar/{id}:", e, file=sys.stderr)
+        return jsonify({"mensaje": "Error"}), 500
 
-    cursor.execute("""
-    UPDATE productos
-    SET cantidad = cantidad + 1
-    WHERE id = %s
-    """,(id,))
-
-    conn.commit()
-
-    return jsonify({"mensaje":"sumado"})
-
+# -------------------------
+# RESTAR STOCK
+# -------------------------
 
 @app.route("/restar/<int:id>", methods=["POST"])
 def restar(id):
+    try:
+        with get_conn() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                UPDATE productos
+                SET cantidad=GREATEST(cantidad-1,0)
+                WHERE id=%s
+                """, (id,))
+                conn.commit()
+        return jsonify({"mensaje": "ok"})
+    except Exception as e:
+        print(f"ERROR /restar/{id}:", e, file=sys.stderr)
+        return jsonify({"mensaje": "Error"}), 500
 
-    cursor.execute("""
-    UPDATE productos
-    SET cantidad = GREATEST(cantidad - 1,0)
-    WHERE id = %s
-    """,(id,))
-
-    conn.commit()
-
-    return jsonify({"mensaje":"restado"})
-
+# -------------------------
+# ELIMINAR PRODUCTO
+# -------------------------
 
 @app.route("/eliminar/<int:id>", methods=["DELETE"])
 def eliminar(id):
+    try:
+        with get_conn() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("DELETE FROM productos WHERE id=%s", (id,))
+                conn.commit()
+        return jsonify({"mensaje": "eliminado"})
+    except Exception as e:
+        print(f"ERROR /eliminar/{id}:", e, file=sys.stderr)
+        return jsonify({"mensaje": "Error"}), 500
 
-    cursor.execute("DELETE FROM productos WHERE id = %s",(id,))
-    conn.commit()
+# -------------------------
+# VENDER PRODUCTO
+# -------------------------
 
-    return jsonify({"mensaje":"eliminado"})
+@app.route("/vender_producto", methods=["POST"])
+def vender_producto():
+    try:
+        data = request.get_json()
+        id = int(data["id"])
+        cantidad = int(data["cantidad"])
+        precio_especial = float(data.get("precio") or 0)
 
+        with get_conn() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                SELECT nombre, precio, cantidad
+                FROM productos
+                WHERE id=%s
+                """, (id,))
+                row = cursor.fetchone()
+
+                if not row:
+                    return jsonify({"mensaje": "Producto no encontrado"}), 404
+
+                nombre, precio_real, stock = row
+                precio_final = precio_especial if precio_especial > 0 else float(precio_real)
+
+                if cantidad > stock:
+                    return jsonify({"mensaje": "Stock insuficiente"}), 400
+
+                total = precio_final * cantidad
+
+                cursor.execute("""
+                UPDATE productos
+                SET cantidad=cantidad-%s
+                WHERE id=%s
+                """, (cantidad, id))
+
+                cursor.execute("""
+                INSERT INTO ventas
+                (producto_id, nombre_producto, cantidad, precio_unitario, total)
+                VALUES (%s, %s, %s, %s, %s)
+                """, (id, nombre, cantidad, precio_final, total))
+
+                conn.commit()
+
+        return jsonify({"mensaje": "Venta realizada"})
+    except Exception as e:
+        print("ERROR /vender_producto:", e, file=sys.stderr)
+        return jsonify({"mensaje": "Error"}), 500
+
+# -------------------------
+# HISTORIAL
+# -------------------------
+
+@app.route("/api/historial")
+def api_historial():
+    try:
+        with get_conn() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                SELECT nombre_producto, cantidad, precio_unitario, total, fecha
+                FROM ventas
+                ORDER BY fecha DESC
+                """)
+                rows = cursor.fetchall()
+
+        historial = []
+        for r in rows:
+            historial.append({
+                "producto": r[0],
+                "cantidad": r[1],
+                "precio_unitario": float(r[2]),
+                "total": float(r[3]),
+                "fecha": r[4].strftime("%Y-%m-%d %H:%M") if r[4] else ""
+            })
+
+        return jsonify(historial)
+    except Exception as e:
+        print("ERROR /api/historial:", e, file=sys.stderr)
+        return jsonify({"mensaje": "Error"}), 500
+
+# -------------------------
+# DASHBOARD
+# -------------------------
+
+@app.route("/api/dashboard")
+def api_dashboard():
+    try:
+        with get_conn() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                SELECT DATE_TRUNC('week', fecha),
+                       SUM(cantidad),
+                       SUM(total)
+                FROM ventas
+                WHERE fecha IS NOT NULL
+                GROUP BY 1
+                ORDER BY 1 DESC
+                """)
+                rows = cursor.fetchall()
+
+        data = []
+        for r in rows:
+            data.append({
+                "semana": r[0].strftime("%Y-%m-%d"),
+                "total_unidades": int(r[1]),
+                "total_ganancias": float(r[2])
+            })
+
+        return jsonify(data)
+    except Exception as e:
+        print("ERROR /api/dashboard:", e, file=sys.stderr)
+        return jsonify({"mensaje": "Error"}), 500
+
+# -------------------------
+# SERVIDOR
+# -------------------------
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
