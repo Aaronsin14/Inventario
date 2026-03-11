@@ -361,14 +361,14 @@ def api_dashboard():
     with conn.cursor() as cursor:
 
         cursor.execute("""
-        SELECT DATE_TRUNC('week', fecha) as semana,
+        SELECT 
+        DATE(fecha) as fecha,
         SUM(cantidad) as unidades,
         SUM(total) as ganancias
         FROM ventas
-        WHERE fecha IS NOT NULL
-        GROUP BY semana
-        ORDER BY semana DESC
-        LIMIT 12
+        GROUP BY fecha
+        ORDER BY fecha DESC
+        LIMIT 30
         """)
 
         rows = cursor.fetchall()
@@ -377,11 +377,8 @@ def api_dashboard():
 
     for r in rows:
 
-        if r[0] is None:
-            continue
-
         data.append({
-            "semana": r[0].strftime("%Y-%m-%d"),
+            "semana": str(r[0]),
             "total_unidades": int(r[1] or 0),
             "total_ganancias": float(r[2] or 0)
         })
