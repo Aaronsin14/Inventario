@@ -60,6 +60,7 @@ with conn.cursor() as cursor:
     )
     """)
 
+    # Insertar usuarios por defecto si no existen
     cursor.execute("""
     INSERT INTO usuarios (usuario,password,rol)
     SELECT 'admin','1234','admin'
@@ -71,10 +72,10 @@ with conn.cursor() as cursor:
     SELECT 'vendedor','1234','vendedor'
     WHERE NOT EXISTS (SELECT 1 FROM usuarios WHERE usuario='vendedor')
     """)
+
     # -------------------------
 
     conn.commit()
-
 
 # -------------------------
 # LOGIN (NUEVO)
