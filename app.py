@@ -1,10 +1,8 @@
 from flask import Flask, render_template, request, jsonify
 import psycopg2
 import os
-from flask_cors import CORS  # <-- agregamos esto
 
 app = Flask(__name__)
-CORS(app)  # <-- habilita que tu frontend pueda hacer fetch aunque esté en otro dominio
 
 UPLOAD = "static/uploads"
 
@@ -15,7 +13,7 @@ if not os.path.exists(UPLOAD):
 # CONEXIÓN BASE DE DATOS
 # -------------------------
 
-DATABASE_URL = os.environ.get("DATABASE_URL") or "postgresql://inventario_user:VG0AF852QrAB0xMr9lRWlyWnpybQBTNA@dpg-d6nhomh5pdvs73bin8og-a.oregon-postgres.render.com/inventario_4oa6"
+DATABASE_URL = os.getenv("DATABASE_URL") or "postgresql://inventario_user:VG0AF852QrAB0xMr9lRWlyWnpybQBTNA@dpg-d6nhomh5pdvs73bin8og-a.oregon-postgres.render.com/inventario_4oa6"
 
 conn = psycopg2.connect(DATABASE_URL, sslmode="require")
 
@@ -47,63 +45,11 @@ with conn.cursor() as cursor:
         cantidad INTEGER,
         precio_unitario NUMERIC,
         total NUMERIC,
-        fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        usuario VARCHAR(100)
+        fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     """)
-
-    # --------- NUEVO ---------
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS usuarios(
-        id SERIAL PRIMARY KEY,
-        usuario VARCHAR(100),
-        password VARCHAR(100),
-        rol VARCHAR(20)
-    )
-    """)
-
-    # Insertar usuarios por defecto si no existen
-    cursor.execute("""
-    INSERT INTO usuarios (usuario,password,rol)
-    SELECT 'admin','1234','admin'
-    WHERE NOT EXISTS (SELECT 1 FROM usuarios WHERE usuario='admin')
-    """)
-
-    cursor.execute("""
-    INSERT INTO usuarios (usuario,password,rol)
-    SELECT 'vendedor','1234','vendedor'
-    WHERE NOT EXISTS (SELECT 1 FROM usuarios WHERE usuario='vendedor')
-    """)
-
-    # -------------------------
 
     conn.commit()
-
-# -------------------------
-# LOGIN (NUEVO)
-# -------------------------
-
-@app.route("/login", methods=["POST"])
-def login():
-
-    data = request.get_json()
-
-    usuario = data.get("usuario")
-    password = data.get("password")
-
-    with conn.cursor() as cursor:
-
-        cursor.execute("""
-        SELECT rol FROM usuarios
-        WHERE usuario=%s AND password=%s
-        """,(usuario,password))
-
-        row = cursor.fetchone()
-
-    if row:
-        return jsonify({"rol": row[0]})
-    else:
-        return jsonify({"mensaje":"Credenciales incorrectas"}),401
 
 
 # -------------------------
@@ -114,21 +60,26 @@ def login():
 def inicio():
     return render_template("inicio.html")
 
+
 @app.route("/agregar")
 def agregar_pagina():
     return render_template("agregar.html")
+
 
 @app.route("/inventario")
 def inventario():
     return render_template("inventario.html")
 
+
 @app.route("/vender")
 def vender_pagina():
     return render_template("vender.html")
 
+
 @app.route("/historial")
 def historial_pagina():
     return render_template("historial.html")
+
 
 @app.route("/dashboard")
 def dashboard_pagina():
@@ -214,6 +165,8 @@ def agregar_producto():
     except Exception as e:
 
         conn.rollback()
+        print(e)
+
         return jsonify({"mensaje":"error"}),500
 
 
@@ -241,6 +194,8 @@ def sumar(id):
     except Exception as e:
 
         conn.rollback()
+        print(e)
+
         return jsonify({"mensaje":"error"}),500
 
 
@@ -268,6 +223,8 @@ def restar(id):
     except Exception as e:
 
         conn.rollback()
+        print(e)
+
         return jsonify({"mensaje":"error"}),500
 
 
@@ -291,6 +248,8 @@ def eliminar(id):
     except Exception as e:
 
         conn.rollback()
+        print(e)
+
         return jsonify({"mensaje":"error"}),500
 
 
@@ -308,9 +267,6 @@ def vender_producto():
         id = int(data["id"])
         cantidad = int(data["cantidad"])
         precio_especial = float(data.get("precio") or 0)
-
-        # NUEVO
-        usuario = data.get("usuario","Desconocido")
 
         with conn.cursor() as cursor:
 
@@ -333,6 +289,7 @@ def vender_producto():
                 return jsonify({"mensaje":"Stock insuficiente"}),400
 
             precio_unitario = precio_especial if precio_especial > 0 else precio_real
+
             total_venta = precio_unitario * cantidad
 
             cursor.execute("""
@@ -341,12 +298,11 @@ def vender_producto():
             WHERE id = %s
             """,(cantidad,id))
 
-            # MODIFICADO
             cursor.execute("""
             INSERT INTO ventas
-            (producto_id,nombre_producto,cantidad,precio_unitario,total,usuario)
-            VALUES (%s,%s,%s,%s,%s,%s)
-            """,(id,nombre_producto,cantidad,precio_unitario,total_venta,usuario))
+            (producto_id,nombre_producto,cantidad,precio_unitario,total)
+            VALUES (%s,%s,%s,%s,%s)
+            """,(id,nombre_producto,cantidad,precio_unitario,total_venta))
 
             conn.commit()
 
@@ -355,6 +311,8 @@ def vender_producto():
     except Exception as e:
 
         conn.rollback()
+        print("ERROR:",e)
+
         return jsonify({"mensaje":"Error en la venta"}),500
 
 
@@ -368,7 +326,7 @@ def api_historial():
     with conn.cursor() as cursor:
 
         cursor.execute("""
-        SELECT nombre_producto,cantidad,precio_unitario,total,fecha,usuario
+        SELECT nombre_producto,cantidad,precio_unitario,total,fecha
         FROM ventas
         ORDER BY fecha DESC
         LIMIT 100
@@ -380,23 +338,85 @@ def api_historial():
 
     for r in rows:
 
+        fecha = r[4]
+
         historial.append({
             "producto": r[0],
             "cantidad": r[1],
             "precio_unitario": float(r[2]),
             "total": float(r[3]),
-            "fecha": r[4].strftime("%Y-%m-%d %H:%M"),
-            "usuario": r[5]
+            "fecha": fecha.strftime("%Y-%m-%d %H:%M") if fecha else ""
         })
 
     return jsonify(historial)
 
 
 # -------------------------
-# SERVER
+# 🧨 BORRAR HISTORIAL (AGREGADO)
+# -------------------------
+
+@app.route("/borrar_historial")
+def borrar_historial():
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("TRUNCATE TABLE ventas RESTART IDENTITY CASCADE;")
+            conn.commit()
+        return "Historial eliminado 🔥"
+    except Exception as e:
+        conn.rollback()
+        print(e)
+        return "Error"
+
+
+# -------------------------
+# DASHBOARD
+# -------------------------
+
+@app.route("/api/dashboard")
+def api_dashboard():
+
+    try:
+
+        with conn.cursor() as cursor:
+
+            cursor.execute("""
+            SELECT 
+            DATE(COALESCE(fecha, CURRENT_TIMESTAMP)) as dia,
+            SUM(cantidad) as unidades,
+            SUM(total) as ganancias
+            FROM ventas
+            GROUP BY dia
+            ORDER BY dia DESC
+            LIMIT 30
+            """)
+
+            rows = cursor.fetchall()
+
+        data = []
+
+        for r in rows:
+
+            data.append({
+                "semana": str(r[0]),
+                "total_unidades": int(r[1] or 0),
+                "total_ganancias": float(r[2] or 0)
+            })
+
+        return jsonify(data)
+
+    except Exception as e:
+
+        print("ERROR DASHBOARD:", e)
+
+        return jsonify([])
+
+
+# -------------------------
+# SERVIDOR
 # -------------------------
 
 if __name__ == "__main__":
 
     port = int(os.environ.get("PORT",10000))
+
     app.run(host="0.0.0.0",port=port)
