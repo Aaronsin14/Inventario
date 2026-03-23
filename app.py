@@ -352,6 +352,23 @@ def api_historial():
 
 
 # -------------------------
+# 🧨 BORRAR HISTORIAL (AGREGADO)
+# -------------------------
+
+@app.route("/borrar_historial")
+def borrar_historial():
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("TRUNCATE TABLE ventas RESTART IDENTITY CASCADE;")
+            conn.commit()
+        return "Historial eliminado 🔥"
+    except Exception as e:
+        conn.rollback()
+        print(e)
+        return "Error"
+
+
+# -------------------------
 # DASHBOARD
 # -------------------------
 
