@@ -2,27 +2,93 @@
 <html>
 
 <head>
-<title>Inventario</title>
+<title>Login</title>
 <link rel="stylesheet" href="/static/style.css">
 </head>
 
 <body>
 
-    <nav class="navbar">
-         <div class="logo">🚗 Inventario AutoPartes</div>
-              <div class="menu">
-                <a href="/">🏠 Inicio</a>
-                <a href="/agregar">📦 Añadir Stock</a>
-                <a href="/inventario">📋 Ver Inventario</a>
-                <a href="/vender">💰 Vender</a>
-                <a href="/historial">📝 Historial</a>
-                <a href="/dashboard">📊 Dashboard</a>
-         </div>
-    </nav>
+<nav class="navbar">
+    <div class="logo">🚗 Inventario AutoPartes</div>
+</nav>
 
-<h1>Sistema de Inventario</h1>
+<h1>🔐 Iniciar Sesión</h1>
 
-<p>Bienvenido al sistema de gestión de inventario de la empresa.</p>
+<div style="margin-top:30px;">
+
+<input 
+type="text" 
+id="usuario" 
+placeholder="Usuario"
+style="padding:10px;width:250px;margin-bottom:10px"
+>
+
+<br>
+
+<input 
+type="password" 
+id="password" 
+placeholder="Contraseña"
+style="padding:10px;width:250px;margin-bottom:10px"
+>
+
+<br>
+
+<button onclick="login()" style="padding:10px 20px;">
+Ingresar
+</button>
+
+</div>
+
+<script>
+
+async function login(){
+
+const usuario = document.getElementById("usuario").value;
+const password = document.getElementById("password").value;
+
+if(!usuario || !password){
+alert("Completa todos los campos");
+return;
+}
+
+try{
+
+const res = await fetch("/login",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({usuario,password})
+});
+
+const data = await res.json();
+
+if(res.ok){
+
+// 🔥 GUARDAR SESIÓN
+localStorage.setItem("usuario",usuario);
+localStorage.setItem("rol",data.rol);
+
+alert("Bienvenido " + usuario);
+
+// 🔁 REDIRECCIÓN
+window.location.href="/inventario";
+
+}else{
+
+alert(data.mensaje || "Error al iniciar sesión");
+
+}
+
+}catch(err){
+
+console.error(err);
+alert("Error de conexión");
+
+}
+
+}
+
+</script>
 
 </body>
 </html>
