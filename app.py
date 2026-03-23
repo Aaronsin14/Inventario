@@ -1,11 +1,11 @@
-from flask import Flask, render_template, request, jsonify, session
+from flask import Flask, render_template, request, jsonify
 import psycopg2
 import os
 
 app = Flask(__name__)
-app.secret_key = "tu_clave_secreta"
 
 UPLOAD = "static/uploads"
+
 if not os.path.exists(UPLOAD):
     os.makedirs(UPLOAD)
 
@@ -14,24 +14,15 @@ if not os.path.exists(UPLOAD):
 # -------------------------
 
 DATABASE_URL = os.getenv("DATABASE_URL") or "postgresql://inventario_user:VG0AF852QrAB0xMr9lRWlyWnpybQBTNA@dpg-d6nhomh5pdvs73bin8og-a.oregon-postgres.render.com/inventario_4oa6"
+
 conn = psycopg2.connect(DATABASE_URL, sslmode="require")
-
-# 🔥 ----------- AGREGADO ----------- 🔥
-def check_conn():
-    global conn
-    try:
-        conn.cursor()
-    except:
-        print("🔁 Reconectando a la base de datos...")
-        conn = psycopg2.connect(DATABASE_URL, sslmode="require")
-# 🔥 -------------------------------- 🔥
-
 
 # -------------------------
 # CREAR TABLAS
 # -------------------------
 
 with conn.cursor() as cursor:
+
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS productos(
         id SERIAL PRIMARY KEY,
@@ -54,34 +45,12 @@ with conn.cursor() as cursor:
         cantidad INTEGER,
         precio_unitario NUMERIC,
         total NUMERIC,
-        fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        vendedor VARCHAR(50)
+        fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     """)
+
     conn.commit()
 
-# -------------------------
-# LOGIN
-# -------------------------
-
-USUARIOS = {
-    "admin": {"password": "1234", "rol": "admin"},
-    "vendedor1": {"password": "1111", "rol": "vendedor"},
-    "vendedor2": {"password": "2222", "rol": "vendedor"},
-    "vendedor3": {"password": "3333", "rol": "vendedor"}
-}
-
-@app.route("/login", methods=["POST"])
-def login():
-    data = request.get_json()
-    usuario = data.get("usuario")
-    password = data.get("password")
-
-    if usuario in USUARIOS and USUARIOS[usuario]["password"] == password:
-        session["usuario"] = usuario
-        session["rol"] = USUARIOS[usuario]["rol"]
-        return jsonify({"rol": USUARIOS[usuario]["rol"]})
-    return jsonify({"mensaje": "Usuario o contraseña incorrecta"}), 401
 
 # -------------------------
 # PAGINAS
@@ -91,46 +60,54 @@ def login():
 def inicio():
     return render_template("inicio.html")
 
+
 @app.route("/agregar")
 def agregar_pagina():
     return render_template("agregar.html")
+
 
 @app.route("/inventario")
 def inventario():
     return render_template("inventario.html")
 
+
 @app.route("/vender")
 def vender_pagina():
     return render_template("vender.html")
+
 
 @app.route("/historial")
 def historial_pagina():
     return render_template("historial.html")
 
+
 @app.route("/dashboard")
 def dashboard_pagina():
     return render_template("dashboard.html")
 
+
 # -------------------------
-# PRODUCTOS
+# OBTENER PRODUCTOS
 # -------------------------
 
 @app.route("/productos")
 def productos():
 
-    check_conn()
-
     with conn.cursor() as cursor:
+
         cursor.execute("""
         SELECT id,codigo,nombre,descripcion,marca,
         cantidad,precio,precio_minimo,foto
         FROM productos
         ORDER BY id DESC
         """)
+
         rows = cursor.fetchall()
 
     productos = []
+
     for r in rows:
+
         productos.append({
             "id": r[0],
             "codigo": r[1],
@@ -145,6 +122,7 @@ def productos():
 
     return jsonify(productos)
 
+
 # -------------------------
 # AGREGAR PRODUCTO
 # -------------------------
@@ -152,9 +130,8 @@ def productos():
 @app.route("/agregar_producto", methods=["POST"])
 def agregar_producto():
 
-    check_conn()  # 🔥 agregado
-
     try:
+
         codigo = request.form.get("codigo")
         nombre = request.form.get("nombre")
         descripcion = request.form.get("descripcion")
@@ -165,6 +142,7 @@ def agregar_producto():
         precio_minimo = float(request.form.get("precio_minimo") or 0)
 
         foto = request.files.get("foto")
+
         ruta = ""
 
         if foto and foto.filename != "":
@@ -173,95 +151,117 @@ def agregar_producto():
             foto.save(os.path.join(UPLOAD, nombre_foto))
 
         with conn.cursor() as cursor:
+
             cursor.execute("""
             INSERT INTO productos
             (codigo,nombre,descripcion,marca,cantidad,precio,precio_minimo,foto)
             VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
             """,(codigo,nombre,descripcion,marca,cantidad,precio,precio_minimo,ruta))
+
             conn.commit()
 
         return jsonify({"mensaje":"ok"})
 
     except Exception as e:
+
         conn.rollback()
         print(e)
+
         return jsonify({"mensaje":"error"}),500
 
+
 # -------------------------
-# STOCK
+# SUMAR STOCK
 # -------------------------
 
 @app.route("/sumar/<int:id>", methods=["POST"])
 def sumar(id):
 
-    check_conn()  # 🔥 agregado
-
     try:
+
         with conn.cursor() as cursor:
+
             cursor.execute("""
             UPDATE productos
             SET cantidad = cantidad + 1
             WHERE id = %s
             """,(id,))
+
             conn.commit()
 
         return jsonify({"mensaje":"sumado"})
 
     except Exception as e:
+
         conn.rollback()
         print(e)
+
         return jsonify({"mensaje":"error"}),500
 
+
+# -------------------------
+# RESTAR STOCK
+# -------------------------
 
 @app.route("/restar/<int:id>", methods=["POST"])
 def restar(id):
 
-    check_conn()  # 🔥 agregado
-
     try:
+
         with conn.cursor() as cursor:
+
             cursor.execute("""
             UPDATE productos
             SET cantidad = GREATEST(cantidad - 1,0)
             WHERE id = %s
             """,(id,))
+
             conn.commit()
 
         return jsonify({"mensaje":"restado"})
 
     except Exception as e:
+
         conn.rollback()
         print(e)
+
         return jsonify({"mensaje":"error"}),500
 
+
+# -------------------------
+# ELIMINAR PRODUCTO
+# -------------------------
 
 @app.route("/eliminar/<int:id>", methods=["DELETE"])
 def eliminar(id):
 
-    check_conn()  # 🔥 agregado
-
     try:
+
         with conn.cursor() as cursor:
+
             cursor.execute("DELETE FROM productos WHERE id=%s",(id,))
+
             conn.commit()
 
         return jsonify({"mensaje":"eliminado"})
 
     except Exception as e:
+
         conn.rollback()
         print(e)
+
         return jsonify({"mensaje":"error"}),500
 
+
 # -------------------------
-# VENDER
+# VENDER PRODUCTO
 # -------------------------
 
 @app.route("/vender_producto", methods=["POST"])
 def vender_producto():
 
-    check_conn()  # 🔥 agregado
-
     try:
+
         data = request.get_json()
 
         id = int(data["id"])
@@ -275,6 +275,7 @@ def vender_producto():
             FROM productos
             WHERE id=%s
             """,(id,))
+
             row = cursor.fetchone()
 
             if not row:
@@ -288,6 +289,7 @@ def vender_producto():
                 return jsonify({"mensaje":"Stock insuficiente"}),400
 
             precio_unitario = precio_especial if precio_especial > 0 else precio_real
+
             total_venta = precio_unitario * cantidad
 
             cursor.execute("""
@@ -298,18 +300,21 @@ def vender_producto():
 
             cursor.execute("""
             INSERT INTO ventas
-            (producto_id,nombre_producto,cantidad,precio_unitario,total,vendedor)
-            VALUES (%s,%s,%s,%s,%s,%s)
-            """,(id,nombre_producto,cantidad,precio_unitario,total_venta,session.get("usuario")))
+            (producto_id,nombre_producto,cantidad,precio_unitario,total)
+            VALUES (%s,%s,%s,%s,%s)
+            """,(id,nombre_producto,cantidad,precio_unitario,total_venta))
 
             conn.commit()
 
         return jsonify({"mensaje":"venta realizada"})
 
     except Exception as e:
+
         conn.rollback()
         print("ERROR:",e)
+
         return jsonify({"mensaje":"Error en la venta"}),500
+
 
 # -------------------------
 # HISTORIAL
@@ -318,30 +323,50 @@ def vender_producto():
 @app.route("/api/historial")
 def api_historial():
 
-    check_conn()  # 🔥 agregado
-
     with conn.cursor() as cursor:
+
         cursor.execute("""
-        SELECT nombre_producto,cantidad,precio_unitario,total,fecha,vendedor
+        SELECT nombre_producto,cantidad,precio_unitario,total,fecha
         FROM ventas
         ORDER BY fecha DESC
         LIMIT 100
         """)
+
         rows = cursor.fetchall()
 
     historial = []
+
     for r in rows:
+
         fecha = r[4]
+
         historial.append({
             "producto": r[0],
             "cantidad": r[1],
             "precio_unitario": float(r[2]),
             "total": float(r[3]),
-            "fecha": fecha.strftime("%Y-%m-%d %H:%M") if fecha else "",
-            "vendedor": r[5]
+            "fecha": fecha.strftime("%Y-%m-%d %H:%M") if fecha else ""
         })
 
     return jsonify(historial)
+
+
+# -------------------------
+# 🧨 BORRAR HISTORIAL (AGREGADO)
+# -------------------------
+
+@app.route("/borrar_historial")
+def borrar_historial():
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("TRUNCATE TABLE ventas RESTART IDENTITY CASCADE;")
+            conn.commit()
+        return "Historial eliminado 🔥"
+    except Exception as e:
+        conn.rollback()
+        print(e)
+        return "Error"
+
 
 # -------------------------
 # DASHBOARD
@@ -350,10 +375,10 @@ def api_historial():
 @app.route("/api/dashboard")
 def api_dashboard():
 
-    check_conn()  # 🔥 agregado
-
     try:
+
         with conn.cursor() as cursor:
+
             cursor.execute("""
             SELECT 
             DATE(COALESCE(fecha, CURRENT_TIMESTAMP)) as dia,
@@ -364,10 +389,13 @@ def api_dashboard():
             ORDER BY dia DESC
             LIMIT 30
             """)
+
             rows = cursor.fetchall()
 
         data = []
+
         for r in rows:
+
             data.append({
                 "semana": str(r[0]),
                 "total_unidades": int(r[1] or 0),
@@ -377,13 +405,16 @@ def api_dashboard():
         return jsonify(data)
 
     except Exception as e:
+
         print("ERROR DASHBOARD:", e)
+
         return jsonify([])
+
 
 # -------------------------
 # SERVIDOR
 # -------------------------
 
 if __name__ == "__main__":
+
     port = int(os.environ.get("PORT",10000))
-    app.run(host="0.0.0.0",port=port)
