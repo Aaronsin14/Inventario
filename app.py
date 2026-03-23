@@ -3,7 +3,7 @@ import psycopg2
 import os
 
 app = Flask(__name__)
-app.secret_key = "tu_clave_secreta"  # 🔹 Necesario para login/usuarios
+app.secret_key = "tu_clave_secreta"
 
 UPLOAD = "static/uploads"
 if not os.path.exists(UPLOAD):
@@ -16,13 +16,16 @@ if not os.path.exists(UPLOAD):
 DATABASE_URL = os.getenv("DATABASE_URL") or "postgresql://inventario_user:VG0AF852QrAB0xMr9lRWlyWnpybQBTNA@dpg-d6nhomh5pdvs73bin8og-a.oregon-postgres.render.com/inventario_4oa6"
 conn = psycopg2.connect(DATABASE_URL, sslmode="require")
 
-# 🔥 AGREGADO
+# 🔥 ----------- AGREGADO ----------- 🔥
 def check_conn():
     global conn
     try:
         conn.cursor()
     except:
+        print("🔁 Reconectando a la base de datos...")
         conn = psycopg2.connect(DATABASE_URL, sslmode="require")
+# 🔥 -------------------------------- 🔥
+
 
 # -------------------------
 # CREAR TABLAS
@@ -58,7 +61,7 @@ with conn.cursor() as cursor:
     conn.commit()
 
 # -------------------------
-# LOGIN DE ADMIN Y VENDEDORES
+# LOGIN
 # -------------------------
 
 USUARIOS = {
@@ -109,7 +112,7 @@ def dashboard_pagina():
     return render_template("dashboard.html")
 
 # -------------------------
-# OBTENER PRODUCTOS
+# PRODUCTOS
 # -------------------------
 
 @app.route("/productos")
@@ -149,7 +152,7 @@ def productos():
 @app.route("/agregar_producto", methods=["POST"])
 def agregar_producto():
 
-    check_conn()
+    check_conn()  # 🔥 agregado
 
     try:
         codigo = request.form.get("codigo")
@@ -162,7 +165,6 @@ def agregar_producto():
         precio_minimo = float(request.form.get("precio_minimo") or 0)
 
         foto = request.files.get("foto")
-
         ruta = ""
 
         if foto and foto.filename != "":
@@ -176,7 +178,6 @@ def agregar_producto():
             (codigo,nombre,descripcion,marca,cantidad,precio,precio_minimo,foto)
             VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
             """,(codigo,nombre,descripcion,marca,cantidad,precio,precio_minimo,ruta))
-
             conn.commit()
 
         return jsonify({"mensaje":"ok"})
@@ -187,13 +188,13 @@ def agregar_producto():
         return jsonify({"mensaje":"error"}),500
 
 # -------------------------
-# SUMAR STOCK
+# STOCK
 # -------------------------
 
 @app.route("/sumar/<int:id>", methods=["POST"])
 def sumar(id):
 
-    check_conn()
+    check_conn()  # 🔥 agregado
 
     try:
         with conn.cursor() as cursor:
@@ -211,14 +212,11 @@ def sumar(id):
         print(e)
         return jsonify({"mensaje":"error"}),500
 
-# -------------------------
-# RESTAR STOCK
-# -------------------------
 
 @app.route("/restar/<int:id>", methods=["POST"])
 def restar(id):
 
-    check_conn()
+    check_conn()  # 🔥 agregado
 
     try:
         with conn.cursor() as cursor:
@@ -236,14 +234,11 @@ def restar(id):
         print(e)
         return jsonify({"mensaje":"error"}),500
 
-# -------------------------
-# ELIMINAR PRODUCTO
-# -------------------------
 
 @app.route("/eliminar/<int:id>", methods=["DELETE"])
 def eliminar(id):
 
-    check_conn()
+    check_conn()  # 🔥 agregado
 
     try:
         with conn.cursor() as cursor:
@@ -258,13 +253,13 @@ def eliminar(id):
         return jsonify({"mensaje":"error"}),500
 
 # -------------------------
-# VENDER PRODUCTO
+# VENDER
 # -------------------------
 
 @app.route("/vender_producto", methods=["POST"])
 def vender_producto():
 
-    check_conn()
+    check_conn()  # 🔥 agregado
 
     try:
         data = request.get_json()
@@ -274,12 +269,12 @@ def vender_producto():
         precio_especial = float(data.get("precio") or 0)
 
         with conn.cursor() as cursor:
+
             cursor.execute("""
             SELECT nombre,precio,cantidad
             FROM productos
             WHERE id=%s
             """,(id,))
-
             row = cursor.fetchone()
 
             if not row:
@@ -293,7 +288,6 @@ def vender_producto():
                 return jsonify({"mensaje":"Stock insuficiente"}),400
 
             precio_unitario = precio_especial if precio_especial > 0 else precio_real
-
             total_venta = precio_unitario * cantidad
 
             cursor.execute("""
@@ -324,7 +318,7 @@ def vender_producto():
 @app.route("/api/historial")
 def api_historial():
 
-    check_conn()
+    check_conn()  # 🔥 agregado
 
     with conn.cursor() as cursor:
         cursor.execute("""
@@ -336,7 +330,6 @@ def api_historial():
         rows = cursor.fetchall()
 
     historial = []
-
     for r in rows:
         fecha = r[4]
         historial.append({
@@ -351,32 +344,13 @@ def api_historial():
     return jsonify(historial)
 
 # -------------------------
-# 🧨 BORRAR HISTORIAL
-# -------------------------
-
-@app.route("/borrar_historial")
-def borrar_historial():
-
-    check_conn()
-
-    try:
-        with conn.cursor() as cursor:
-            cursor.execute("TRUNCATE TABLE ventas RESTART IDENTITY CASCADE;")
-            conn.commit()
-        return "Historial eliminado 🔥"
-    except Exception as e:
-        conn.rollback()
-        print(e)
-        return "Error"
-
-# -------------------------
 # DASHBOARD
 # -------------------------
 
 @app.route("/api/dashboard")
 def api_dashboard():
 
-    check_conn()
+    check_conn()  # 🔥 agregado
 
     try:
         with conn.cursor() as cursor:
@@ -393,7 +367,6 @@ def api_dashboard():
             rows = cursor.fetchall()
 
         data = []
-
         for r in rows:
             data.append({
                 "semana": str(r[0]),
@@ -412,7 +385,5 @@ def api_dashboard():
 # -------------------------
 
 if __name__ == "__main__":
-
     port = int(os.environ.get("PORT",10000))
-
     app.run(host="0.0.0.0",port=port)
