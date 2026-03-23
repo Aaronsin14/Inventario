@@ -69,6 +69,7 @@ async function vender(id) {
         const res = await fetch("/vender_producto", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
+            credentials: "include", // 🔥 CORRECCIÓN CLAVE
             body: JSON.stringify({
                 id: id,
                 cantidad: cantidad,
