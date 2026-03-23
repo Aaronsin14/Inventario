@@ -2,141 +2,102 @@ const lista = document.getElementById("lista");
 const buscar = document.getElementById("buscarProducto");
 
 // Cargar productos
-async function cargar(){
+async function cargar() {
+    try {
+        const res = await fetch("/productos");
+        if (!res.ok) throw new Error("Error al cargar productos");
+        const data = await res.json();
 
-try{
+        lista.innerHTML = "";
 
-const res = await fetch("/productos");
-const data = await res.json();
+        if (data.length === 0) {
+            lista.innerHTML = "<p>No hay productos disponibles</p>";
+            return;
+        }
 
-lista.innerHTML = "";
+        data.forEach(p => {
+            lista.innerHTML += `
+            <div class="producto">
+                <img src="${p.foto}" onerror="this.src='https://via.placeholder.com/200'">
+                <h3>${p.nombre}</h3>
+                <p><b>Código:</b> ${p.codigo}</p>
+                <p><b>Marca:</b> ${p.marca}</p>
+                <p><b>Precio:</b> $${Number(p.precio).toLocaleString()}</p>
+                <p><b>Precio mínimo:</b> $${Number(p.precio_minimo).toLocaleString()}</p>
+                <p><b>Stock:</b> 
+                    <span class="${p.cantidad <= 0 ? 'stock-bajo' : ''}">
+                        ${p.cantidad}
+                    </span>
+                </p>
+                <input type="number" placeholder="Precio especial" id="precio${p.id}">
+                <input type="number" placeholder="Cantidad" id="cantidad${p.id}" value="1" min="1" max="${p.cantidad}">
+                <button onclick="vender(${p.id})">💰 Vender</button>
+            </div>
+            `;
+        });
 
-data.forEach(p=>{
-
-lista.innerHTML += `
-
-<div class="producto">
-
-<img src="${p.foto}" onerror="this.src='https://via.placeholder.com/200'">
-
-<h3>${p.nombre}</h3>
-
-<p><b>Código:</b> ${p.codigo}</p>
-
-<p><b>Marca:</b> ${p.marca}</p>
-
-<p><b>Precio:</b> $${Number(p.precio).toLocaleString()}</p>
-
-<p><b>Precio mínimo:</b> $${Number(p.precio_minimo).toLocaleString()}</p>
-
-<p><b>Stock:</b> 
-<span class="${p.cantidad <= 0 ? 'stock-bajo' : ''}">
-${p.cantidad}
-</span>
-</p>
-
-<input type="number"
-placeholder="Precio especial"
-id="precio${p.id}">
-
-<input type="number"
-placeholder="Cantidad"
-id="cantidad${p.id}"
-value="1"
-min="1"
-max="${p.cantidad}">
-
-<button onclick="vender(${p.id})">💰 Vender</button>
-
-</div>
-
-`;
-
-});
-
-}catch(err){
-
-console.error("Error cargando productos",err);
-lista.innerHTML="<p>Error cargando productos</p>";
-
-}
-
+    } catch (err) {
+        console.error("Error cargando productos", err);
+        lista.innerHTML = "<p>Error cargando productos</p>";
+    }
 }
 
 // Vender producto
-async function vender(id){
+async function vender(id) {
+    const cantidadInput = document.getElementById("cantidad" + id);
+    const precioInput = document.getElementById("precio" + id);
 
-const cantidadInput = document.getElementById("cantidad"+id);
-const precioInput = document.getElementById("precio"+id);
+    const cantidad = parseInt(cantidadInput.value) || 0;
+    const precio = parseFloat(precioInput.value) || 0;
 
-const cantidad = parseInt(cantidadInput.value) || 0;
-const precio = parseFloat(precioInput.value) || 0;
+    if (cantidad <= 0) {
+        alert("Ingresa una cantidad válida");
+        return;
+    }
 
-// 🔥 NUEVO: obtener usuario logueado
-const usuario = localStorage.getItem("usuario") || "Desconocido";
+    // Nuevo: pedir usuario antes de vender
+    let usuario = prompt("Ingresa tu usuario para registrar la venta:");
+    if (!usuario) usuario = "Desconocido";
 
-if(cantidad <= 0){
+    try {
+        const res = await fetch("/vender_producto", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                id: id,
+                cantidad: cantidad,
+                precio: precio,
+                usuario: usuario
+            })
+        });
 
-alert("Ingresa una cantidad válida");
-return;
+        const data = await res.json();
 
-}
+        if (res.ok) {
+            alert(data.mensaje);
+        } else {
+            alert(data.mensaje || "Error en la venta");
+        }
 
-try{
+        cargar(); // recarga productos para actualizar stock
 
-const res = await fetch("/vender_producto",{
-
-method:"POST",
-
-headers:{
-"Content-Type":"application/json"
-},
-
-body:JSON.stringify({
-id:id,
-cantidad:cantidad,
-precio:precio,
-usuario:usuario // 🔥 NUEVO
-})
-
-});
-
-const data = await res.json();
-
-if(res.ok){
-
-alert(data.mensaje);
-
-}else{
-
-alert(data.mensaje || "Error en la venta");
-
-}
-
-cargar();
-
-}catch(err){
-
-console.error("Error en la venta",err);
-alert("Error al procesar la venta");
-
-}
-
+    } catch (err) {
+        console.error("Error en la venta", err);
+        alert("Error al procesar la venta");
+    }
 }
 
 // Buscador
-buscar?.addEventListener("keyup",()=>{
+buscar?.addEventListener("keyup", () => {
+    let texto = buscar.value.toLowerCase();
 
-let texto = buscar.value.toLowerCase();
-
-document.querySelectorAll(".producto").forEach(p=>{
-
-p.style.display = p.innerText.toLowerCase().includes(texto)
-? "block"
-: "none";
-
-});
-
+    document.querySelectorAll(".producto").forEach(p => {
+        p.style.display = p.innerText.toLowerCase().includes(texto)
+            ? "block"
+            : "none";
+    });
 });
 
 // Cargar productos al iniciar
