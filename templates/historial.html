@@ -21,11 +21,12 @@
 
 <h1>📝 Historial de Ventas</h1>
 
-<!-- 🔥 NUEVO BOTÓN -->
+<!-- Botón para descargar Excel -->
 <button onclick="descargarExcel()" style="padding:10px;margin-bottom:15px;">
-📥 Descargar Excel
+    📥 Descargar Excel
 </button>
 
+<!-- Buscador de historial -->
 <input 
     type="text" 
     id="buscarVenta" 
@@ -33,74 +34,57 @@
     style="padding:10px;margin-bottom:20px;width:300px"
 >
 
+<!-- Tabla de historial -->
 <table class="tabla">
-
-<thead>
-<tr>
-<th>Producto</th>
-<th>Cantidad</th>
-<th>Precio Unitario</th>
-<th>Total</th>
-<th>Fecha</th>
-<th>Usuario</th> <!-- 🔥 NUEVO -->
-</tr>
-</thead>
-
-<tbody id="tablaHistorial"></tbody>
-
+    <thead>
+        <tr>
+            <th>Producto</th>
+            <th>Cantidad</th>
+            <th>Precio Unitario</th>
+            <th>Total</th>
+            <th>Fecha</th>
+            <th>Vendedor</th> <!-- Nuevo campo -->
+        </tr>
+    </thead>
+    <tbody id="tablaHistorial"></tbody>
 </table>
 
 <script>
-
 async function cargarHistorial(){
+    const res = await fetch("/api/historial");
+    const data = await res.json();
+    const tabla = document.getElementById("tablaHistorial");
+    tabla.innerHTML = "";
 
-const res = await fetch("/api/historial")
-const data = await res.json()
-
-const tabla = document.getElementById("tablaHistorial")
-
-tabla.innerHTML=""
-
-data.forEach(v=>{
-
-tabla.innerHTML += `
-
+    data.forEach(v => {
+        tabla.innerHTML += `
 <tr>
-<td>${v.producto}</td>
-<td>${v.cantidad}</td>
-<td>$${Number(v.precio_unitario).toLocaleString()}</td>
-<td>$${Number(v.total).toLocaleString()}</td>
-<td>${v.fecha}</td>
-<td>${v.usuario}</td> <!-- 🔥 NUEVO -->
+    <td>${v.producto}</td>
+    <td>${v.cantidad}</td>
+    <td>$${Number(v.precio_unitario).toLocaleString()}</td>
+    <td>$${Number(v.total).toLocaleString()}</td>
+    <td>${v.fecha}</td>
+    <td>${v.vendedor}</td> <!-- Mostrar vendedor -->
 </tr>
-
-`
-
-})
-
+        `;
+    });
 }
 
-document.getElementById("buscarVenta").addEventListener("keyup",function(){
+// Buscador de historial
+document.getElementById("buscarVenta").addEventListener("keyup", function(){
+    let texto = this.value.toLowerCase();
+    document.querySelectorAll("#tablaHistorial tr").forEach(row => {
+        row.style.display = row.innerText.toLowerCase().includes(texto) ? "" : "none";
+    });
+});
 
-let texto = this.value.toLowerCase()
-
-document.querySelectorAll("#tablaHistorial tr").forEach(row=>{
-
-row.style.display = row.innerText.toLowerCase().includes(texto)
-? ""
-: "none"
-
-})
-
-})
-
-/* 🔥 NUEVA FUNCIÓN */
+// Función para descargar Excel
 function descargarExcel(){
     window.location.href = "/exportar_excel";
 }
 
-cargarHistorial()
-
+// Cargar historial al iniciar
+cargarHistorial();
 </script>
 
 </body>

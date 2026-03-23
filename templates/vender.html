@@ -2,36 +2,39 @@
 <html>
 
 <head>
-<title>Vender Productos</title>
-<link rel="stylesheet" href="/static/style.css">
+    <title>Vender Productos</title>
+    <link rel="stylesheet" href="/static/style.css">
 </head>
 
 <body>
 
 <nav class="navbar">
-<div class="logo">🚗 Inventario AutoPartes</div>
+    <div class="logo">🚗 Inventario AutoPartes</div>
 
-<div class="menu">
-<a href="/">🏠 Inicio</a>
-<a href="/agregar">📦 Añadir Stock</a>
-<a href="/inventario">📋 Ver Inventario</a>
-<a href="/vender">💰 Vender</a>
-<a href="/historial">📝 Historial</a>
-<a href="/dashboard">📊 Dashboard</a>
-</div>
+    <div class="menu">
+        <a href="/">🏠 Inicio</a>
+        <a href="/agregar">📦 Añadir Stock</a>
+        <a href="/inventario">📋 Ver Inventario</a>
+        <a href="/vender">💰 Vender</a>
+        <a href="/historial">📝 Historial</a>
+        <a href="/dashboard">📊 Dashboard</a>
+    </div>
 </nav>
 
 <h1>💰 Vender Productos</h1>
 
+<!-- Buscador de productos -->
 <input 
-type="text"
-id="buscarProducto"
-placeholder="🔎 Buscar producto..."
-style="padding:10px;margin-bottom:20px;width:300px"
+    type="text"
+    id="buscarProducto"
+    placeholder="🔎 Buscar producto..."
+    style="padding:10px;margin-bottom:20px;width:300px"
 >
 
+<!-- Lista de productos -->
 <div id="lista"></div>
 
+<!-- Script JS -->
 <script src="/static/vender.js"></script>
 
 </body>
