@@ -2,93 +2,87 @@
 <html>
 
 <head>
-<title>Login</title>
-<link rel="stylesheet" href="/static/style.css">
+    <title>Login</title>
+    <link rel="stylesheet" href="/static/style.css">
 </head>
 
 <body>
 
-<nav class="navbar">
-    <div class="logo">🚗 Inventario AutoPartes</div>
-</nav>
+    <nav class="navbar">
+        <div class="logo">🚗 Inventario AutoPartes</div>
+    </nav>
 
-<h1>🔐 Iniciar Sesión</h1>
+    <h1>🔐 Iniciar Sesión</h1>
 
-<div style="margin-top:30px;">
+    <div style="margin-top:30px;">
 
-<input 
-type="text" 
-id="usuario" 
-placeholder="Usuario"
-style="padding:10px;width:250px;margin-bottom:10px"
->
+        <input 
+            type="text" 
+            id="usuario" 
+            placeholder="Usuario"
+            style="padding:10px;width:250px;margin-bottom:10px"
+        >
 
-<br>
+        <br>
 
-<input 
-type="password" 
-id="password" 
-placeholder="Contraseña"
-style="padding:10px;width:250px;margin-bottom:10px"
->
+        <input 
+            type="password" 
+            id="password" 
+            placeholder="Contraseña"
+            style="padding:10px;width:250px;margin-bottom:10px"
+        >
 
-<br>
+        <br>
 
-<button onclick="login()" style="padding:10px 20px;">
-Ingresar
-</button>
+        <button onclick="login()" style="padding:10px 20px;">
+            Ingresar
+        </button>
 
-</div>
+    </div>
 
-<script>
+    <script>
+        async function login() {
+            const usuario = document.getElementById("usuario").value;
+            const password = document.getElementById("password").value;
 
-async function login(){
+            if (!usuario || !password) {
+                alert("Completa todos los campos");
+                return;
+            }
 
-const usuario = document.getElementById("usuario").value;
-const password = document.getElementById("password").value;
+            try {
+                const res = await fetch("/login", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ usuario, password })
+                });
 
-if(!usuario || !password){
-alert("Completa todos los campos");
-return;
-}
+                const data = await res.json();
 
-try{
+                if (res.ok) {
+                    // 🔥 GUARDAR SESIÓN
+                    localStorage.setItem("usuario", usuario);
+                    localStorage.setItem("rol", data.rol);
 
-const res = await fetch("/login",{
-method:"POST",
-headers:{"Content-Type":"application/json"},
-body:JSON.stringify({usuario,password})
-});
+                    alert("Bienvenido " + usuario);
 
-const data = await res.json();
+                    // 🔁 REDIRECCIÓN SEGÚN ROL
+                    if (data.rol === "admin") {
+                        window.location.href = "/inventario";
+                    } else {
+                        window.location.href = "/vender";
+                    }
 
-if(res.ok){
+                } else {
+                    alert(data.mensaje || "Error al iniciar sesión");
+                }
 
-// 🔥 GUARDAR SESIÓN
-localStorage.setItem("usuario",usuario);
-localStorage.setItem("rol",data.rol);
-
-alert("Bienvenido " + usuario);
-
-// 🔁 REDIRECCIÓN
-window.location.href="/inventario";
-
-}else{
-
-alert(data.mensaje || "Error al iniciar sesión");
-
-}
-
-}catch(err){
-
-console.error(err);
-alert("Error de conexión");
-
-}
-
-}
-
-</script>
+            } catch (err) {
+                console.error(err);
+                alert("Error de conexión");
+            }
+        }
+    </script>
 
 </body>
 </html>
