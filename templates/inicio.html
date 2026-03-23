@@ -2,87 +2,109 @@
 <html>
 
 <head>
-    <title>Login</title>
-    <link rel="stylesheet" href="/static/style.css">
+<title>Inventario</title>
+<title>Login</title>
+<link rel="stylesheet" href="/static/style.css">
 </head>
 
 <body>
 
     <nav class="navbar">
-        <div class="logo">🚗 Inventario AutoPartes</div>
+         <div class="logo">🚗 Inventario AutoPartes</div>
+              <div class="menu">
+                <a href="/">🏠 Inicio</a>
+                <a href="/agregar">📦 Añadir Stock</a>
+                <a href="/inventario">📋 Ver Inventario</a>
+                <a href="/vender">💰 Vender</a>
+                <a href="/historial">📝 Historial</a>
+                <a href="/dashboard">📊 Dashboard</a>
+         </div>
     </nav>
 
-    <h1>🔐 Iniciar Sesión</h1>
+<h1>Sistema de Inventario</h1>
 
-    <div style="margin-top:30px;">
+<p>Bienvenido al sistema de gestión de inventario de la empresa.</p>
+<nav class="navbar">
+    <div class="logo">🚗 Inventario AutoPartes</div>
+</nav>
 
-        <input 
-            type="text" 
-            id="usuario" 
-            placeholder="Usuario"
-            style="padding:10px;width:250px;margin-bottom:10px"
-        >
+<h1>🔐 Iniciar Sesión</h1>
 
-        <br>
+<div style="margin-top:30px;">
 
-        <input 
-            type="password" 
-            id="password" 
-            placeholder="Contraseña"
-            style="padding:10px;width:250px;margin-bottom:10px"
-        >
+<input 
+type="text" 
+id="usuario" 
+placeholder="Usuario"
+style="padding:10px;width:250px;margin-bottom:10px"
+>
 
-        <br>
+<br>
 
-        <button onclick="login()" style="padding:10px 20px;">
-            Ingresar
-        </button>
+<input 
+type="password" 
+id="password" 
+placeholder="Contraseña"
+style="padding:10px;width:250px;margin-bottom:10px"
+>
 
-    </div>
+<br>
 
-    <script>
-        async function login() {
-            const usuario = document.getElementById("usuario").value;
-            const password = document.getElementById("password").value;
+<button onclick="login()" style="padding:10px 20px;">
+Ingresar
+</button>
 
-            if (!usuario || !password) {
-                alert("Completa todos los campos");
-                return;
-            }
+</div>
 
-            try {
-                const res = await fetch("/login", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ usuario, password })
-                });
+<script>
 
-                const data = await res.json();
+async function login(){
 
-                if (res.ok) {
-                    // 🔥 GUARDAR SESIÓN
-                    localStorage.setItem("usuario", usuario);
-                    localStorage.setItem("rol", data.rol);
+const usuario = document.getElementById("usuario").value;
+const password = document.getElementById("password").value;
 
-                    alert("Bienvenido " + usuario);
+if(!usuario || !password){
+alert("Completa todos los campos");
+return;
+}
 
-                    // 🔁 REDIRECCIÓN SEGÚN ROL
-                    if (data.rol === "admin") {
-                        window.location.href = "/inventario";
-                    } else {
-                        window.location.href = "/vender";
-                    }
+try{
 
-                } else {
-                    alert(data.mensaje || "Error al iniciar sesión");
-                }
+const res = await fetch("/login",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({usuario,password})
+});
 
-            } catch (err) {
-                console.error(err);
-                alert("Error de conexión");
-            }
-        }
-    </script>
+const data = await res.json();
+
+if(res.ok){
+
+// 🔥 GUARDAR SESIÓN
+localStorage.setItem("usuario",usuario);
+localStorage.setItem("rol",data.rol);
+
+alert("Bienvenido " + usuario);
+
+// 🔁 REDIRECCIÓN
+window.location.href="/inventario";
+
+}else{
+
+alert(data.mensaje || "Error al iniciar sesión");
+
+}
+
+}catch(err){
+
+console.error(err);
+alert("Error de conexión");
+
+}
+
+}
+
+</script>
 
 </body>
 </html>
