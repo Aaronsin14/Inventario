@@ -1,21 +1,27 @@
 const lista = document.getElementById("lista");
 const buscar = document.getElementById("buscarProducto");
 
-// Mostrar vendedor actual
 const usuarioActual = localStorage.getItem("usuario") || "Desconocido";
 
-// Cargar productos
 async function cargar() {
     try {
-        const res = await fetch("/productos");
-        const data = await res.json();
+        const res = await fetch("/productos", {
+            credentials: "include"
+        });
+
+        let data;
+        try {
+            data = await res.json();
+        } catch {
+            throw new Error("Error parseando JSON");
+        }
 
         lista.innerHTML = "";
 
         data.forEach(p => {
             lista.innerHTML += `
 <div class="producto">
-    <img src="${p.foto}" onerror="this.src='https://via.placeholder.com/200'">
+    <img src="${p.foto || 'https://via.placeholder.com/200'}">
 
     <h3>${p.nombre}</h3>
     <p><b>Código:</b> ${p.codigo}</p>
@@ -28,16 +34,8 @@ async function cargar() {
         </span>
     </p>
 
-    <input type="number"
-        placeholder="Precio especial"
-        id="precio${p.id}">
-
-    <input type="number"
-        placeholder="Cantidad"
-        id="cantidad${p.id}"
-        value="1"
-        min="1"
-        max="${p.cantidad}">
+    <input type="number" placeholder="Precio especial" id="precio${p.id}">
+    <input type="number" placeholder="Cantidad" id="cantidad${p.id}" value="1" min="1" max="${p.cantidad}">
 
     <button onclick="vender(${p.id})">💰 Vender</button>
 
@@ -52,13 +50,9 @@ async function cargar() {
     }
 }
 
-// Vender producto
 async function vender(id) {
-    const cantidadInput = document.getElementById("cantidad"+id);
-    const precioInput = document.getElementById("precio"+id);
-
-    const cantidad = parseInt(cantidadInput.value) || 0;
-    const precio = parseFloat(precioInput.value) || 0;
+    const cantidad = parseInt(document.getElementById("cantidad"+id).value) || 0;
+    const precio = parseFloat(document.getElementById("precio"+id).value) || 0;
 
     if(cantidad <= 0) {
         alert("Ingresa una cantidad válida");
@@ -69,31 +63,32 @@ async function vender(id) {
         const res = await fetch("/vender_producto", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            credentials: "include", // 🔥 CORRECCIÓN CLAVE
-            body: JSON.stringify({
-                id: id,
-                cantidad: cantidad,
-                precio: precio
-            })
+            credentials: "include",
+            body: JSON.stringify({ id, cantidad, precio })
         });
 
-        const data = await res.json();
+        let data;
+        try {
+            data = await res.json();
+        } catch {
+            data = { mensaje: "Error del servidor" };
+        }
 
         if(res.ok){
             alert(`${data.mensaje}\nVendedor: ${usuarioActual}`);
         } else {
             alert(data.mensaje || "Error en la venta");
+            console.error(data);
         }
 
-        cargar(); // recargar productos
+        cargar();
 
     } catch(err) {
-        console.error("Error en la venta", err);
+        console.error(err);
         alert("Error al procesar la venta");
     }
 }
 
-// Buscador
 buscar?.addEventListener("keyup", () => {
     let texto = buscar.value.toLowerCase();
     document.querySelectorAll(".producto").forEach(p => {
@@ -101,5 +96,4 @@ buscar?.addEventListener("keyup", () => {
     });
 });
 
-// Cargar productos al iniciar
 cargar();
