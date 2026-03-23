@@ -1,8 +1,10 @@
 from flask import Flask, render_template, request, jsonify
 import psycopg2
 import os
+from flask_cors import CORS  # <-- agregamos esto
 
 app = Flask(__name__)
+CORS(app)  # <-- habilita que tu frontend pueda hacer fetch aunque esté en otro dominio
 
 UPLOAD = "static/uploads"
 
