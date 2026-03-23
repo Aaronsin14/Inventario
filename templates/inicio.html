@@ -8,29 +8,35 @@
 
 <body>
 
+<nav class="navbar">
+    <div class="logo">🚗 Inventario AutoPartes</div>
+</nav>
+
 <h1>🔐 Iniciar Sesión</h1>
 
-<div style="max-width:400px;margin:auto">
+<div style="margin-top:30px;">
 
 <input 
 type="text" 
 id="usuario" 
 placeholder="Usuario"
-style="width:100%;padding:10px;margin-bottom:10px"
+style="padding:10px;width:250px;margin-bottom:10px"
 >
+
+<br>
 
 <input 
 type="password" 
 id="password" 
 placeholder="Contraseña"
-style="width:100%;padding:10px;margin-bottom:10px"
+style="padding:10px;width:250px;margin-bottom:10px"
 >
 
-<button onclick="login()" style="width:100%;padding:10px">
+<br>
+
+<button onclick="login()" style="padding:10px 20px;">
 Ingresar
 </button>
-
-<p id="error" style="color:red"></p>
 
 </div>
 
@@ -41,11 +47,16 @@ async function login(){
 const usuario = document.getElementById("usuario").value;
 const password = document.getElementById("password").value;
 
+if(!usuario || !password){
+alert("Completa todos los campos");
+return;
+}
+
+try{
+
 const res = await fetch("/login",{
 method:"POST",
-headers:{
-"Content-Type":"application/json"
-},
+headers:{"Content-Type":"application/json"},
 body:JSON.stringify({usuario,password})
 });
 
@@ -53,14 +64,25 @@ const data = await res.json();
 
 if(res.ok){
 
+// 🔥 GUARDAR SESIÓN
 localStorage.setItem("usuario",usuario);
 localStorage.setItem("rol",data.rol);
 
-window.location.href = "/inventario";
+alert("Bienvenido " + usuario);
+
+// 🔁 REDIRECCIÓN
+window.location.href="/inventario";
 
 }else{
 
-document.getElementById("error").innerText = data.mensaje;
+alert(data.mensaje || "Error al iniciar sesión");
+
+}
+
+}catch(err){
+
+console.error(err);
+alert("Error de conexión");
 
 }
 
