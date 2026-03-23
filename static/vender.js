@@ -72,6 +72,9 @@ const precioInput = document.getElementById("precio"+id);
 const cantidad = parseInt(cantidadInput.value) || 0;
 const precio = parseFloat(precioInput.value) || 0;
 
+// 🔥 NUEVO: obtener usuario logueado
+const usuario = localStorage.getItem("usuario") || "Desconocido";
+
 if(cantidad <= 0){
 
 alert("Ingresa una cantidad válida");
@@ -92,7 +95,8 @@ headers:{
 body:JSON.stringify({
 id:id,
 cantidad:cantidad,
-precio:precio
+precio:precio,
+usuario:usuario // 🔥 NUEVO
 })
 
 });
