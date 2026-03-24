@@ -2,8 +2,29 @@ from flask import Flask, render_template, request, jsonify, session
 import psycopg2
 import os
 
+# 🔥 NUEVO
+from functools import wraps
+from flask import redirect
+
 app = Flask(__name__)
 app.secret_key = "mi_clave_secreta_123"
+
+# 🔥 SEGURIDAD (NUEVO)
+def login_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if "usuario" not in session:
+            return redirect("/")
+        return f(*args, **kwargs)
+    return decorated
+
+def admin_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if session.get("rol") != "admin":
+            return jsonify({"mensaje":"Solo administrador"}),403
+        return f(*args, **kwargs)
+    return decorated
 
 UPLOAD = "static/uploads"
 if not os.path.exists(UPLOAD):
@@ -14,7 +35,9 @@ if not os.path.exists(UPLOAD):
 # -------------------------
 DATABASE_URL = os.getenv("DATABASE_URL") or "postgresql://inventario_user:VG0AF852QrAB0xMr9lRWlyWnpybQBTNA@dpg-d6nhomh5pdvs73bin8og-a.oregon-postgres.render.com/inventario_4oa6"
 conn = psycopg2.connect(DATABASE_URL, sslmode="require")
-conn.autocommit = False
+
+# 🔥 FIX RENDER (ANTES ERA False)
+conn.autocommit = True
 
 # -------------------------
 # CREAR TABLAS
@@ -22,7 +45,6 @@ conn.autocommit = False
 try:
     with conn.cursor() as cursor:
 
-        # Productos
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS productos(
             id SERIAL PRIMARY KEY,
@@ -37,7 +59,6 @@ try:
         )
         """)
 
-        # Ventas (SIN usuario aquí, se agrega después)
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS ventas(
             id SERIAL PRIMARY KEY,
@@ -50,7 +71,6 @@ try:
         )
         """)
 
-        # Usuarios (SIN DROP ❌)
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS usuarios(
             id SERIAL PRIMARY KEY,
@@ -61,7 +81,6 @@ try:
         )
         """)
 
-        # Insertar usuarios solo si no existen
         cursor.execute("SELECT COUNT(*) FROM usuarios")
         if cursor.fetchone()[0] == 0:
             cursor.execute("""
@@ -73,14 +92,11 @@ try:
             ('Vendedor 4','vendedor4','1234','vendedor')
             """)
 
-        conn.commit()
-
 except Exception as e:
-    conn.rollback()
     print("Error inicializando la base de datos:", e)
 
 # -------------------------
-# FIX COLUMNAS FALTANTES (CORRECTO)
+# FIX COLUMNAS FALTANTES
 # -------------------------
 try:
     with conn.cursor() as cursor:
@@ -88,11 +104,9 @@ try:
         ALTER TABLE ventas 
         ADD COLUMN IF NOT EXISTS usuario VARCHAR(100);
         """)
-        conn.commit()
         print("✅ Columna usuario verificada correctamente")
 
 except Exception as e:
-    conn.rollback()
     print("❌ Error en fix usuario:", e)
 
 # -------------------------
@@ -103,22 +117,31 @@ def inicio():
     return render_template("inicio.html")
 
 @app.route("/agregar")
+@login_required
+@admin_required
 def agregar_pagina():
     return render_template("agregar.html")
 
 @app.route("/inventario")
+@login_required
+@admin_required
 def inventario():
     return render_template("inventario.html")
 
 @app.route("/vender")
+@login_required
 def vender_pagina():
     return render_template("vender.html")
 
 @app.route("/historial")
+@login_required
+@admin_required
 def historial_pagina():
     return render_template("historial.html")
 
 @app.route("/dashboard")
+@login_required
+@admin_required
 def dashboard_pagina():
     return render_template("dashboard.html")
 
@@ -139,7 +162,6 @@ def login():
             )
             row = cursor.fetchone()
     except Exception as e:
-        conn.rollback()
         print("Error en login:", e)
         return jsonify({"mensaje":"Error en la base de datos"}),500
 
@@ -158,13 +180,15 @@ def logout():
 @app.route("/api/usuario_actual")
 def usuario_actual():
     if "usuario" in session:
-        return jsonify({"usuario": session["usuario"]})
+        return jsonify({"usuario": session["usuario"], "rol": session.get("rol")})
     return jsonify({"usuario": None}), 401
 
 # -------------------------
 # PRODUCTOS
 # -------------------------
 @app.route("/productos")
+@login_required
+@admin_required
 def productos():
     try:
         with conn.cursor() as cursor:
@@ -176,7 +200,6 @@ def productos():
             """)
             rows = cursor.fetchall()
     except Exception as e:
-        conn.rollback()
         print("Error obteniendo productos:", e)
         return jsonify([])
 
@@ -199,6 +222,8 @@ def productos():
 # AGREGAR PRODUCTO
 # -------------------------
 @app.route("/agregar_producto", methods=["POST"])
+@login_required
+@admin_required
 def agregar_producto():
     try:
         codigo = request.form.get("codigo")
@@ -222,12 +247,10 @@ def agregar_producto():
             (codigo,nombre,descripcion,marca,cantidad,precio,precio_minimo,foto)
             VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
             """,(codigo,nombre,descripcion,marca,cantidad,precio,precio_minimo,ruta))
-            conn.commit()
 
         return jsonify({"mensaje":"ok"})
 
     except Exception as e:
-        conn.rollback()
         print(e)
         return jsonify({"mensaje":"error"}),500
 
@@ -235,11 +258,9 @@ def agregar_producto():
 # VENDER PRODUCTO
 # -------------------------
 @app.route("/vender_producto", methods=["POST"])
+@login_required
 def vender_producto():
     try:
-        if "usuario" not in session:
-            return jsonify({"mensaje":"No autenticado"}),403
-
         data = request.get_json()
         if not data:
             return jsonify({"mensaje":"No se enviaron datos"}),400
@@ -263,7 +284,6 @@ def vender_producto():
             if cantidad > stock_actual:
                 return jsonify({"mensaje":"Stock insuficiente"}),400
 
-            # Precio especial seguro
             try:
                 precio_especial = float(data.get("precio"))
                 if precio_especial <= 0:
@@ -282,12 +302,9 @@ def vender_producto():
                 VALUES (%s,%s,%s,%s,%s,%s)
             """,(id,nombre_producto,cantidad,precio_unitario,total_venta,usuario_actual))
 
-            conn.commit()
-
         return jsonify({"mensaje":"venta realizada"})
 
     except Exception as e:
-        conn.rollback()
         print("🔥 ERROR VENTA:", e)
         return jsonify({"mensaje":"Error en la venta"}),500
 
@@ -295,6 +312,8 @@ def vender_producto():
 # HISTORIAL
 # -------------------------
 @app.route("/api/historial")
+@login_required
+@admin_required
 def api_historial():
     try:
         with conn.cursor() as cursor:
@@ -306,7 +325,6 @@ def api_historial():
             """)
             rows = cursor.fetchall()
     except Exception as e:
-        conn.rollback()
         print("Error historial:", e)
         return jsonify([])
 
@@ -323,24 +341,22 @@ def api_historial():
 
     return jsonify(historial)
 
-
 # -------------------------
 # DASHBOARD
 # -------------------------
 @app.route("/api/dashboard")
+@login_required
+@admin_required
 def api_dashboard():
     try:
         with conn.cursor() as cursor:
 
-            # Total dinero vendido
             cursor.execute("SELECT COALESCE(SUM(total),0) FROM ventas")
             total_ventas = cursor.fetchone()[0]
 
-            # Total unidades vendidas
             cursor.execute("SELECT COALESCE(SUM(cantidad),0) FROM ventas")
             total_unidades = cursor.fetchone()[0]
 
-            # Ventas por semana
             cursor.execute("""
                 SELECT 
                     DATE_TRUNC('week', COALESCE(fecha, CURRENT_TIMESTAMP)) as semana,
@@ -371,7 +387,6 @@ def api_dashboard():
         })
 
     except Exception as e:
-        conn.rollback()
         print("Error dashboard:", e)
         return jsonify({
             "total_ventas": 0,
@@ -380,9 +395,9 @@ def api_dashboard():
             "unidades": [],
             "ganancias": []
         })
-    
+
 # -------------------------
-# FIX FECHAS VACÍAS
+# FIX FECHAS
 # -------------------------
 try:
     with conn.cursor() as cursor:
@@ -391,11 +406,9 @@ try:
             SET fecha = CURRENT_TIMESTAMP
             WHERE fecha IS NULL;
         """)
-        conn.commit()
         print("✅ Fechas corregidas correctamente")
 
 except Exception as e:
-    conn.rollback()
     print("❌ Error corrigiendo fechas:", e)
 
 # -------------------------
