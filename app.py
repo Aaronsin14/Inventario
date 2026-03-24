@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, jsonify, session
 import psycopg2
 import os
 from functools import wraps  # ✅ NUEVO
+from flask import redirect
 
 app = Flask(__name__)
 app.secret_key = "mi_clave_secreta_123"
@@ -166,10 +167,10 @@ def login():
     else:
         return jsonify({"mensaje":"usuario o contraseña incorrecta"}),401
 
-@app.route("/logout", methods=["GET", "POST"])
+@app.route("/logout")
 def logout():
     session.clear()
-    return jsonify({"mensaje": "ok"})
+    return redirect("/")
 
 @app.route("/api/usuario_actual")
 def usuario_actual():
