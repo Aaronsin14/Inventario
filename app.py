@@ -263,7 +263,7 @@ def vender_producto():
             cursor.execute("SELECT nombre,precio,cantidad FROM productos WHERE id=%s",(id,))
             row = cursor.fetchone()
             if not row:
-                return jsonify({"mensaje":"Producto no encontrado"}),404
+                return jsonify({"mensaje":"Producto no encontrado"}),404  # <-- Asegúrate de este check
 
             nombre_producto, precio_real, stock_actual = row
             if cantidad > stock_actual:
@@ -283,7 +283,7 @@ def vender_producto():
         return jsonify({"mensaje":"venta realizada"})
     except Exception as e:
         conn.rollback()
-        print("ERROR:",e)
+        print("ERROR VENTA:",e)  # <-- imprime el error real
         return jsonify({"mensaje":"Error en la venta"}),500
 
 # -------------------------
