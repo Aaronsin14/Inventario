@@ -1,10 +1,6 @@
 const lista = document.getElementById("lista")
 const buscar = document.getElementById("buscar")
 
-// Obtener rol desde Flask
-let rol = "{{ rol }}"  // Asegúrate de pasar el rol al render_template
-
-// Cargar productos
 async function cargar(){
 
     if(!lista) return
@@ -46,7 +42,7 @@ async function cargar(){
     })
 }
 
-// Sumar stock
+// SUMAR STOCK
 async function sumar(id){
     let cantidad = prompt("Ingrese cantidad a sumar:")
     if(!cantidad) return
@@ -58,7 +54,7 @@ async function sumar(id){
     cargar()
 }
 
-// Restar stock
+// RESTAR STOCK
 async function restar(id){
     let cantidad = prompt("Ingrese cantidad a restar:")
     if(!cantidad) return
@@ -70,7 +66,7 @@ async function restar(id){
     cargar()
 }
 
-// Eliminar producto
+// ELIMINAR PRODUCTO
 async function eliminar(id){
     if(!confirm("¿Eliminar producto?")) return
     await fetch("/eliminar_producto",{
@@ -81,7 +77,7 @@ async function eliminar(id){
     cargar()
 }
 
-// Editar precio
+// EDITAR PRECIO
 async function editarPrecio(id, precioActual){
     let nuevo = prompt("Nuevo precio:", precioActual)
     if(!nuevo) return
@@ -93,7 +89,7 @@ async function editarPrecio(id, precioActual){
     cargar()
 }
 
-// Filtro de búsqueda
+// FILTRO DE BÚSQUEDA
 buscar?.addEventListener("keyup",()=>{
     let texto = buscar.value.toLowerCase()
     document.querySelectorAll(".producto").forEach(p=>{
@@ -101,5 +97,5 @@ buscar?.addEventListener("keyup",()=>{
     })
 })
 
-// Cargar productos al inicio
+// CARGAR PRODUCTOS AL INICIO
 cargar()
