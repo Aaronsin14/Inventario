@@ -2,90 +2,93 @@
 <html>
 
 <head>
-<title>Inventario</title>
-<link rel="stylesheet" href="/static/style.css">
+    <title>Inventario</title>
+    <link rel="stylesheet" href="/static/style.css">
 </head>
 
 <body>
 
     <nav class="navbar">
-         <div class="logo">🚗 Inventario AutoPartes</div>
-              <div class="menu">
-                <a href="/">🏠 Inicio</a>
-                {% if session.get('rol') == 'admin' %}
-                    <a href="/agregar">📦 Añadir Stock</a>
-                    <a href="/inventario">📋 Ver Inventario</a>
-                    <a href="/historial">📝 Historial</a>
-                    <a href="/dashboard">📊 Dashboard</a>
-                {% endif %}
-                {% if session.get('rol') in ['admin','vendedor'] %}
-                    <a href="/vender">💰 Vender</a>
-                {% endif %}
-         </div>
+        <div class="logo">🚗 Inventario AutoPartes</div>
+        <div class="menu">
+            <a href="/">🏠 Inicio</a>
+            {% if session.get('rol') == 'admin' %}
+                <a href="/agregar">📦 Añadir Stock</a>
+                <a href="/inventario">📋 Ver Inventario</a>
+                <a href="/historial">📝 Historial</a>
+                <a href="/dashboard">📊 Dashboard</a>
+            {% endif %}
+            {% if session.get('rol') in ['admin','vendedor'] %}
+                <a href="/vender">💰 Vender</a>
+            {% endif %}
+        </div>
     </nav>
 
-<h1>🔐 Login</h1>
+    <h1>🔐 Login</h1>
 
-{% if session.get('usuario') %}
-    <p>¡Hola {{ session.usuario }}! Ya estás logueado como {{ session.rol }}.</p>
-    <button onclick="cerrarSesion()">Cerrar Sesión</button>
+    {% if session.get('usuario') %}
+        <p>¡Hola {{ session.usuario }}! Ya estás logueado como {{ session.rol }}.</p>
+        <button onclick="cerrarSesion()">Cerrar Sesión</button>
 
-    <script>
-    async function cerrarSesion() {
-        await fetch("/logout");               // borra la sesión en el backend
-        window.location.href = "/login";      // redirige al login automáticamente
-    }
-    </script>
-
-{% else %}
-
-<p>Inicia sesión para acceder al sistema de ventas</p>
-
-<form id="loginForm" style="max-width:300px;margin-top:20px;">
-    <input type="text" id="usuario" placeholder="Usuario" required style="width:100%;padding:10px;margin-bottom:10px;">
-    <input type="password" id="password" placeholder="Contraseña" required style="width:100%;padding:10px;margin-bottom:10px;">
-    <button type="submit" style="padding:10px;width:100%;">Iniciar Sesión</button>
-</form>
-
-<p id="mensaje" style="color:red;margin-top:10px;"></p>
-
-<script>
-document.getElementById("loginForm").addEventListener("submit", async function(e){
-    e.preventDefault();
-
-    const usuario = document.getElementById("usuario").value.trim();
-    const password = document.getElementById("password").value.trim();
-    const mensaje = document.getElementById("mensaje");
-
-    mensaje.textContent = "";
-
-    try{
-        const res = await fetch("/login", {
-            method:"POST",
-            headers: {"Content-Type":"application/x-www-form-urlencoded"},
-            body: new URLSearchParams({usuario, password})
-        });
-
-        const data = await res.json();
-
-        if(res.ok){
-            // Redirigir según rol
-            if(data.rol === "admin"){
-                window.location.href = "/dashboard";
-            } else {
-                window.location.href = "/vender";
+        <script>
+            async function cerrarSesion() {
+                await fetch("/logout", { method: "GET" }); // borra la sesión en backend
+                window.location.href = "/login";           // redirige al login
             }
-        }else{
-            mensaje.textContent = data.mensaje || "Error de login";
-        }
+        </script>
 
-    }catch(err){
-        console.error("Error en login",err);
-        mensaje.textContent = "Error al conectar con el servidor";
-    }
-});
-</script>
+    {% else %}
 
-{% endif %}
+        <p>Inicia sesión para acceder al sistema de ventas</p>
+
+        <form id="loginForm" style="max-width:300px;margin-top:20px;">
+            <input type="text" id="usuario" placeholder="Usuario" required
+                style="width:100%;padding:10px;margin-bottom:10px;">
+            <input type="password" id="password" placeholder="Contraseña" required
+                style="width:100%;padding:10px;margin-bottom:10px;">
+            <button type="submit" style="padding:10px;width:100%;">Iniciar Sesión</button>
+        </form>
+
+        <p id="mensaje" style="color:red;margin-top:10px;"></p>
+
+        <script>
+            document.getElementById("loginForm").addEventListener("submit", async function (e) {
+                e.preventDefault();
+
+                const usuario = document.getElementById("usuario").value.trim();
+                const password = document.getElementById("password").value.trim();
+                const mensaje = document.getElementById("mensaje");
+
+                mensaje.textContent = "";
+
+                try {
+                    const res = await fetch("/login", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                        body: new URLSearchParams({ usuario, password })
+                    });
+
+                    const data = await res.json();
+
+                    if (res.ok) {
+                        // Redirigir según rol
+                        if (data.rol === "admin") {
+                            window.location.href = "/dashboard";
+                        } else {
+                            window.location.href = "/vender";
+                        }
+                    } else {
+                        mensaje.textContent = data.mensaje || "Error de login";
+                    }
+
+                } catch (err) {
+                    console.error("Error en login", err);
+                    mensaje.textContent = "Error al conectar con el servidor";
+                }
+            });
+        </script>
+
+    {% endif %}
 </body>
+
 </html>
