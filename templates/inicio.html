@@ -28,7 +28,15 @@
 
 {% if session.get('usuario') %}
     <p>¡Hola {{ session.usuario }}! Ya estás logueado como {{ session.rol }}.</p>
-    <button onclick="window.location.href='/logout'">Cerrar Sesión</button>
+    <button onclick="cerrarSesion()">Cerrar Sesión</button>
+
+    <script>
+    async function cerrarSesion() {
+        await fetch("/logout");               // borra la sesión en el backend
+        window.location.href = "/login";      // redirige al login automáticamente
+    }
+    </script>
+
 {% else %}
 
 <p>Inicia sesión para acceder al sistema de ventas</p>
