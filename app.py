@@ -21,7 +21,6 @@ conn.autocommit = False  # Mantenemos transacciones para INSERT/UPDATE/DELETE
 # -------------------------
 try:
     with conn.cursor() as cursor:
-        # Tabla productos
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS productos(
             id SERIAL PRIMARY KEY,
@@ -35,7 +34,7 @@ try:
             foto TEXT
         )
         """)
-        # Tabla ventas
+
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS ventas(
             id SERIAL PRIMARY KEY,
@@ -44,14 +43,12 @@ try:
             cantidad INTEGER,
             precio_unitario NUMERIC,
             total NUMERIC,
-            fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            usuario VARCHAR(100)
+            fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
         """)
-        # Tabla usuarios
-        cursor.execute("DROP TABLE IF EXISTS usuarios CASCADE;")
+
         cursor.execute("""
-        CREATE TABLE usuarios(
+        CREATE TABLE IF NOT EXISTS usuarios(
             id SERIAL PRIMARY KEY,
             nombre VARCHAR(100),
             usuario VARCHAR(50) UNIQUE,
@@ -59,19 +56,39 @@ try:
             rol VARCHAR(20)
         )
         """)
-        # Insertar usuarios iniciales
-        cursor.execute("""
-        INSERT INTO usuarios (nombre, usuario, password, rol) VALUES
-        ('Administrador','admin','admin123','admin'),
-        ('Vendedor 1','vendedor1','1234','vendedor'),
-        ('Vendedor 2','vendedor2','1234','vendedor'),
-        ('Vendedor 3','vendedor3','1234','vendedor'),
-        ('Vendedor 4','vendedor4','1234','vendedor')
-        """)
+
         conn.commit()
+
 except Exception as e:
     conn.rollback()
     print("Error inicializando la base de datos:", e)
+
+
+# -------------------------
+# FIX COLUMNAS FALTANTES (AQUÍ VA)
+# -------------------------
+try:
+    with conn.cursor() as cursor:
+        cursor.execute("""
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name='ventas' AND column_name='usuario'
+        """)
+        
+        existe = cursor.fetchone()
+
+        if not existe:
+            print("⚠️ Agregando columna 'usuario'...")
+            cursor.execute("ALTER TABLE ventas ADD COLUMN usuario VARCHAR(100);")
+            conn.commit()
+        else:
+            print("✅ Columna usuario OK")
+
+except Exception as e:
+    conn.rollback()
+    print("❌ Error en fix usuario:", e)
+
+
 
 # -------------------------
 # PÁGINAS
