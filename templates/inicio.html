@@ -12,15 +12,24 @@
          <div class="logo">🚗 Inventario AutoPartes</div>
               <div class="menu">
                 <a href="/">🏠 Inicio</a>
-                <a href="/agregar">📦 Añadir Stock</a>
-                <a href="/inventario">📋 Ver Inventario</a>
-                <a href="/vender">💰 Vender</a>
-                <a href="/historial">📝 Historial</a>
-                <a href="/dashboard">📊 Dashboard</a>
+                {% if session.get('rol') == 'admin' %}
+                    <a href="/agregar">📦 Añadir Stock</a>
+                    <a href="/inventario">📋 Ver Inventario</a>
+                    <a href="/historial">📝 Historial</a>
+                    <a href="/dashboard">📊 Dashboard</a>
+                {% endif %}
+                {% if session.get('rol') in ['admin','vendedor'] %}
+                    <a href="/vender">💰 Vender</a>
+                {% endif %}
          </div>
     </nav>
 
 <h1>🔐 Login</h1>
+
+{% if session.get('usuario') %}
+    <p>¡Hola {{ session.usuario }}! Ya estás logueado como {{ session.rol }}.</p>
+    <button onclick="window.location.href='/logout'">Cerrar Sesión</button>
+{% else %}
 
 <p>Inicia sesión para acceder al sistema de ventas</p>
 
@@ -52,8 +61,12 @@ document.getElementById("loginForm").addEventListener("submit", async function(e
         const data = await res.json();
 
         if(res.ok){
-            // Redirigir a vender
-            window.location.href = "/vender";
+            // Redirigir según rol
+            if(data.rol === "admin"){
+                window.location.href = "/dashboard";
+            } else {
+                window.location.href = "/vender";
+            }
         }else{
             mensaje.textContent = data.mensaje || "Error de login";
         }
@@ -65,5 +78,6 @@ document.getElementById("loginForm").addEventListener("submit", async function(e
 });
 </script>
 
+{% endif %}
 </body>
 </html>
