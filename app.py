@@ -14,57 +14,61 @@ if not os.path.exists(UPLOAD):
 # -------------------------
 DATABASE_URL = os.getenv("DATABASE_URL") or "postgresql://inventario_user:VG0AF852QrAB0xMr9lRWlyWnpybQBTNA@dpg-d6nhomh5pdvs73bin8og-a.oregon-postgres.render.com/inventario_4oa6"
 conn = psycopg2.connect(DATABASE_URL, sslmode="require")
+conn.autocommit = False  # Mantenemos transacciones para INSERT/UPDATE/DELETE
 
 # -------------------------
 # CREAR TABLAS
 # -------------------------
-with conn.cursor() as cursor:
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS productos(
-        id SERIAL PRIMARY KEY,
-        codigo VARCHAR(50),
-        nombre VARCHAR(100),
-        descripcion TEXT,
-        marca VARCHAR(100),
-        cantidad INTEGER,
-        precio NUMERIC,
-        precio_minimo NUMERIC,
-        foto TEXT
-    )
-    """)
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS ventas(
-        id SERIAL PRIMARY KEY,
-        producto_id INTEGER REFERENCES productos(id),
-        nombre_producto VARCHAR(100),
-        cantidad INTEGER,
-        precio_unitario NUMERIC,
-        total NUMERIC,
-        fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        usuario VARCHAR(100)
-    )
-    """)
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS usuarios(
-        id SERIAL PRIMARY KEY,
-        nombre VARCHAR(100),
-        usuario VARCHAR(50) UNIQUE,
-        password VARCHAR(50),
-        rol VARCHAR(20)
-    )
-    """)
-    # Insertar admin y 4 vendedores si no existen
-    cursor.execute("SELECT COUNT(*) FROM usuarios")
-    if cursor.fetchone()[0] == 0:
+try:
+    with conn.cursor() as cursor:
         cursor.execute("""
-        INSERT INTO usuarios (nombre, usuario, password, rol) VALUES
-        ('Administrador','admin','admin123','admin'),
-        ('Vendedor 1','vendedor1','1234','vendedor'),
-        ('Vendedor 2','vendedor2','1234','vendedor'),
-        ('Vendedor 3','vendedor3','1234','vendedor'),
-        ('Vendedor 4','vendedor4','1234','vendedor')
+        CREATE TABLE IF NOT EXISTS productos(
+            id SERIAL PRIMARY KEY,
+            codigo VARCHAR(50),
+            nombre VARCHAR(100),
+            descripcion TEXT,
+            marca VARCHAR(100),
+            cantidad INTEGER,
+            precio NUMERIC,
+            precio_minimo NUMERIC,
+            foto TEXT
+        )
         """)
-    conn.commit()
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS ventas(
+            id SERIAL PRIMARY KEY,
+            producto_id INTEGER REFERENCES productos(id),
+            nombre_producto VARCHAR(100),
+            cantidad INTEGER,
+            precio_unitario NUMERIC,
+            total NUMERIC,
+            fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            usuario VARCHAR(100)
+        )
+        """)
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS usuarios(
+            id SERIAL PRIMARY KEY,
+            nombre VARCHAR(100),
+            usuario VARCHAR(50) UNIQUE,
+            password VARCHAR(50),
+            rol VARCHAR(20)
+        )
+        """)
+        cursor.execute("SELECT COUNT(*) FROM usuarios")
+        if cursor.fetchone()[0] == 0:
+            cursor.execute("""
+            INSERT INTO usuarios (nombre, usuario, password, rol) VALUES
+            ('Administrador','admin','admin123','admin'),
+            ('Vendedor 1','vendedor1','1234','vendedor'),
+            ('Vendedor 2','vendedor2','1234','vendedor'),
+            ('Vendedor 3','vendedor3','1234','vendedor'),
+            ('Vendedor 4','vendedor4','1234','vendedor')
+            """)
+        conn.commit()
+except Exception as e:
+    conn.rollback()
+    print("Error inicializando la base de datos:", e)
 
 # -------------------------
 # PAGINAS
@@ -101,11 +105,18 @@ def login():
     data = request.form
     usuario = data.get("usuario")
     password = data.get("password")
-    
-    with conn.cursor() as cursor:
-        cursor.execute("SELECT nombre,rol FROM usuarios WHERE usuario=%s AND password=%s", (usuario,password))
-        row = cursor.fetchone()
-    
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                "SELECT nombre, rol FROM usuarios WHERE usuario=%s AND password=%s",
+                (usuario, password)
+            )
+            row = cursor.fetchone()
+    except Exception as e:
+        conn.rollback()
+        print("Error en login:", e)
+        return jsonify({"mensaje":"Error en la base de datos"}),500
+
     if row:
         session["usuario"] = row[0]
         session["rol"] = row[1]
@@ -129,14 +140,19 @@ def usuario_actual():
 # -------------------------
 @app.route("/productos")
 def productos():
-    with conn.cursor() as cursor:
-        cursor.execute("""
-        SELECT id,codigo,nombre,descripcion,marca,
-        cantidad,precio,precio_minimo,foto
-        FROM productos
-        ORDER BY id DESC
-        """)
-        rows = cursor.fetchall()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("""
+            SELECT id,codigo,nombre,descripcion,marca,
+            cantidad,precio,precio_minimo,foto
+            FROM productos
+            ORDER BY id DESC
+            """)
+            rows = cursor.fetchall()
+    except Exception as e:
+        conn.rollback()
+        print("Error obteniendo productos:", e)
+        return jsonify([])
 
     productos = []
     for r in rows:
@@ -272,14 +288,19 @@ def vender_producto():
 # -------------------------
 @app.route("/api/historial")
 def api_historial():
-    with conn.cursor() as cursor:
-        cursor.execute("""
-            SELECT nombre_producto,cantidad,precio_unitario,total,fecha,usuario
-            FROM ventas
-            ORDER BY fecha DESC
-            LIMIT 100
-        """)
-        rows = cursor.fetchall()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                SELECT nombre_producto,cantidad,precio_unitario,total,fecha,usuario
+                FROM ventas
+                ORDER BY fecha DESC
+                LIMIT 100
+            """)
+            rows = cursor.fetchall()
+    except Exception as e:
+        conn.rollback()
+        print("Error historial:", e)
+        return jsonify([])
 
     historial = []
     for r in rows:
@@ -327,18 +348,19 @@ def api_dashboard():
             LIMIT 30
             """)
             rows = cursor.fetchall()
-
-        data = []
-        for r in rows:
-            data.append({
-                "semana": str(r[0]),
-                "total_unidades": int(r[1] or 0),
-                "total_ganancias": float(r[2] or 0)
-            })
-        return jsonify(data)
     except Exception as e:
+        conn.rollback()
         print("ERROR DASHBOARD:", e)
         return jsonify([])
+
+    data = []
+    for r in rows:
+        data.append({
+            "semana": str(r[0]),
+            "total_unidades": int(r[1] or 0),
+            "total_ganancias": float(r[2] or 0)
+        })
+    return jsonify(data)
 
 # -------------------------
 # SERVIDOR
