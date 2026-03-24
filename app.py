@@ -159,9 +159,10 @@ def login():
         return jsonify({"mensaje":"Error en la base de datos"}),500
 
     if row:
-        session["usuario"] = row[0]
-        session["rol"] = row[1]
-        return jsonify({"mensaje":"ok"})
+         session["usuario"] = row[0]
+         session["rol"] = row[1]
+         # ✅ enviar también el rol al frontend
+         return jsonify({"mensaje":"ok", "rol": row[1]})
     else:
         return jsonify({"mensaje":"usuario o contraseña incorrecta"}),401
 
