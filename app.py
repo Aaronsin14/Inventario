@@ -49,7 +49,7 @@ try:
         )
         """)
 
-        # Ventas
+        # Ventas (SIN usuario aquí, se agrega después)
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS ventas(
             id SERIAL PRIMARY KEY,
@@ -62,7 +62,7 @@ try:
         )
         """)
 
-        # Usuarios
+        # Usuarios (SIN DROP ❌)
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS usuarios(
             id SERIAL PRIMARY KEY,
@@ -92,7 +92,7 @@ except Exception as e:
     print("Error inicializando la base de datos:", e)
 
 # -------------------------
-# FIX COLUMNAS FALTANTES
+# FIX COLUMNAS FALTANTES (CORRECTO)
 # -------------------------
 try:
     with conn.cursor() as cursor:
@@ -115,15 +115,14 @@ def inicio():
     return render_template("inicio.html")
 
 @app.route("/agregar")
-@admin_required
+@admin_required  # ✅ NUEVO
 def agregar_pagina():
     return render_template("agregar.html")
 
 @app.route("/inventario")
-@admin_required
+@admin_required  # ✅ NUEVO
 def inventario():
-    # ✅ PASAR ROL AL FRONTEND
-    return render_template("inventario.html", rol=session.get("rol"))
+    return render_template("inventario.html")
 
 @app.route("/vender")
 def vender_pagina():
@@ -134,7 +133,7 @@ def historial_pagina():
     return render_template("historial.html")
 
 @app.route("/dashboard")
-@admin_required
+@admin_required  # ✅ NUEVO
 def dashboard_pagina():
     return render_template("dashboard.html")
 
@@ -162,6 +161,7 @@ def login():
     if row:
          session["usuario"] = row[0]
          session["rol"] = row[1]
+         # ✅ enviar también el rol al frontend
          return jsonify({"mensaje":"ok", "rol": row[1]})
     else:
         return jsonify({"mensaje":"usuario o contraseña incorrecta"}),401
@@ -174,18 +174,19 @@ def logout():
 @app.route("/api/usuario_actual")
 def usuario_actual():
     if "usuario" in session:
-        return jsonify({"usuario": session["usuario"], "rol": session.get("rol")})
-    return jsonify({"usuario": None, "rol": None}), 401
+        return jsonify({"usuario": session["usuario"]})
+    return jsonify({"usuario": None}), 401
 
 # -------------------------
 # PRODUCTOS
 # -------------------------
 @app.route("/productos")
 def productos():
-    if "usuario" not in session:
-        return jsonify([])
-
     try:
+        # 👇 YA LO TENÍAS (BIEN)
+        if "usuario" not in session:
+            return jsonify([])
+
         with conn.cursor() as cursor:
             cursor.execute("""
             SELECT id,codigo,nombre,descripcion,marca,
@@ -218,7 +219,7 @@ def productos():
 # AGREGAR PRODUCTO
 # -------------------------
 @app.route("/agregar_producto", methods=["POST"])
-@admin_required
+@admin_required  # ✅ NUEVO
 def agregar_producto():
     try:
         codigo = request.form.get("codigo")
@@ -311,73 +312,12 @@ def vender_producto():
         return jsonify({"mensaje":"Error en la venta"}),500
 
 # -------------------------
-# NUEVAS RUTAS ADMIN
-# -------------------------
-@app.route("/sumar_stock", methods=["POST"])
-@admin_required
-def sumar_stock():
-    data = request.get_json()
-    id = int(data.get("id", 0))
-    cantidad = int(data.get("cantidad", 0))
-    if id <= 0 or cantidad <= 0:
-        return jsonify({"mensaje":"Datos inválidos"}), 400
-
-    with conn.cursor() as cursor:
-        cursor.execute("UPDATE productos SET cantidad = cantidad + %s WHERE id=%s", (cantidad, id))
-        conn.commit()
-    return jsonify({"mensaje":"ok"})
-
-@app.route("/restar_stock", methods=["POST"])
-@admin_required
-def restar_stock():
-    data = request.get_json()
-    id = int(data.get("id", 0))
-    cantidad = int(data.get("cantidad", 0))
-    if id <= 0 or cantidad <= 0:
-        return jsonify({"mensaje":"Datos inválidos"}), 400
-
-    with conn.cursor() as cursor:
-        cursor.execute("SELECT cantidad FROM productos WHERE id=%s", (id,))
-        stock_actual = cursor.fetchone()[0]
-        if stock_actual < cantidad:
-            return jsonify({"mensaje":"Stock insuficiente"}), 400
-
-        cursor.execute("UPDATE productos SET cantidad = cantidad - %s WHERE id=%s", (cantidad, id))
-        conn.commit()
-    return jsonify({"mensaje":"ok"})
-
-@app.route("/editar_precio", methods=["POST"])
-@admin_required
-def editar_precio():
-    data = request.get_json()
-    id = int(data.get("id",0))
-    precio = float(data.get("precio",0))
-    if id <= 0 or precio <= 0:
-        return jsonify({"mensaje":"Datos inválidos"}), 400
-
-    with conn.cursor() as cursor:
-        cursor.execute("UPDATE productos SET precio = %s WHERE id=%s", (precio, id))
-        conn.commit()
-    return jsonify({"mensaje":"ok"})
-
-@app.route("/eliminar_producto", methods=["POST"])
-@admin_required
-def eliminar_producto():
-    data = request.get_json()
-    id = int(data.get("id",0))
-    if id <= 0:
-        return jsonify({"mensaje":"Datos inválidos"}), 400
-
-    with conn.cursor() as cursor:
-        cursor.execute("DELETE FROM productos WHERE id=%s", (id,))
-        conn.commit()
-    return jsonify({"mensaje":"ok"})
-
-# -------------------------
 # HISTORIAL
 # -------------------------
 @app.route("/api/historial")
 def api_historial():
+
+    # ✅ NUEVO (solo logueado)
     if "usuario" not in session:
         return jsonify([])
 
@@ -412,7 +352,7 @@ def api_historial():
 # DASHBOARD
 # -------------------------
 @app.route("/api/dashboard")
-@admin_required
+@admin_required  # ✅ NUEVO
 def api_dashboard():
     try:
         with conn.cursor() as cursor:
