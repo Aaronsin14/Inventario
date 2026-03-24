@@ -166,10 +166,10 @@ def login():
     else:
         return jsonify({"mensaje":"usuario o contraseña incorrecta"}),401
 
-@app.route("/logout")
+@app.route("/logout", methods=["GET", "POST"])
 def logout():
     session.clear()
-    return jsonify({"mensaje":"ok"})
+    return jsonify({"mensaje": "ok"})
 
 @app.route("/api/usuario_actual")
 def usuario_actual():
