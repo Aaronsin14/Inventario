@@ -323,6 +323,64 @@ def api_historial():
 
     return jsonify(historial)
 
+
+# -------------------------
+# DASHBOARD
+# -------------------------
+@app.route("/api/dashboard")
+def api_dashboard():
+    try:
+        with conn.cursor() as cursor:
+
+            # Total dinero vendido
+            cursor.execute("SELECT COALESCE(SUM(total),0) FROM ventas")
+            total_ventas = cursor.fetchone()[0]
+
+            # Total unidades vendidas
+            cursor.execute("SELECT COALESCE(SUM(cantidad),0) FROM ventas")
+            total_unidades = cursor.fetchone()[0]
+
+            # Ventas por semana
+            cursor.execute("""
+                SELECT 
+                    DATE_TRUNC('week', fecha) as semana,
+                    SUM(cantidad),
+                    SUM(total)
+                FROM ventas
+                GROUP BY semana
+                ORDER BY semana
+            """)
+
+            rows = cursor.fetchall()
+
+        semanas = []
+        unidades = []
+        ganancias = []
+
+        for r in rows:
+            semanas.append(str(r[0])[:10])
+            unidades.append(r[1])
+            ganancias.append(float(r[2]))
+
+        return jsonify({
+            "total_ventas": float(total_ventas),
+            "total_unidades": int(total_unidades),
+            "semanas": semanas,
+            "unidades": unidades,
+            "ganancias": ganancias
+        })
+
+    except Exception as e:
+        conn.rollback()
+        print("Error dashboard:", e)
+        return jsonify({
+            "total_ventas": 0,
+            "total_unidades": 0,
+            "semanas": [],
+            "unidades": [],
+            "ganancias": []
+        })
+
 # -------------------------
 # SERVIDOR
 # -------------------------
