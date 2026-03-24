@@ -21,6 +21,7 @@ conn.autocommit = False  # Mantenemos transacciones para INSERT/UPDATE/DELETE
 # -------------------------
 try:
     with conn.cursor() as cursor:
+        # Tabla productos
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS productos(
             id SERIAL PRIMARY KEY,
@@ -34,6 +35,7 @@ try:
             foto TEXT
         )
         """)
+        # Tabla ventas
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS ventas(
             id SERIAL PRIMARY KEY,
@@ -46,8 +48,10 @@ try:
             usuario VARCHAR(100)
         )
         """)
+        # Tabla usuarios: primero eliminamos si existe (para evitar columnas mal creadas)
+        cursor.execute("DROP TABLE IF EXISTS usuarios CASCADE;")
         cursor.execute("""
-        CREATE TABLE IF NOT EXISTS usuarios(
+        CREATE TABLE usuarios(
             id SERIAL PRIMARY KEY,
             nombre VARCHAR(100),
             usuario VARCHAR(50) UNIQUE,
@@ -55,16 +59,15 @@ try:
             rol VARCHAR(20)
         )
         """)
-        cursor.execute("SELECT COUNT(*) FROM usuarios")
-        if cursor.fetchone()[0] == 0:
-            cursor.execute("""
-            INSERT INTO usuarios (nombre, usuario, password, rol) VALUES
-            ('Administrador','admin','admin123','admin'),
-            ('Vendedor 1','vendedor1','1234','vendedor'),
-            ('Vendedor 2','vendedor2','1234','vendedor'),
-            ('Vendedor 3','vendedor3','1234','vendedor'),
-            ('Vendedor 4','vendedor4','1234','vendedor')
-            """)
+        # Insertamos usuarios iniciales
+        cursor.execute("""
+        INSERT INTO usuarios (nombre, usuario, password, rol) VALUES
+        ('Administrador','admin','admin123','admin'),
+        ('Vendedor 1','vendedor1','1234','vendedor'),
+        ('Vendedor 2','vendedor2','1234','vendedor'),
+        ('Vendedor 3','vendedor3','1234','vendedor'),
+        ('Vendedor 4','vendedor4','1234','vendedor')
+        """)
         conn.commit()
 except Exception as e:
     conn.rollback()
