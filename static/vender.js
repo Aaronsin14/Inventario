@@ -39,7 +39,6 @@ async function cargar(){
         lista.innerHTML = "";
 
         data.forEach(p=>{
-
             lista.innerHTML += `
             <div class="producto">
                 <img src="${p.foto}" onerror="this.src='https://via.placeholder.com/200'">
@@ -74,29 +73,40 @@ async function vender(id){
     const precioInput = document.getElementById("precio"+id);
 
     const cantidad = parseInt(cantidadInput.value) || 0;
-    const precio = parseFloat(precioInput.value) || 0;
+    const precioEspecial = parseFloat(precioInput.value);
 
     if(cantidad <= 0){
         alert("Ingresa una cantidad válida");
         return;
     }
 
+    const maxStock = parseInt(cantidadInput.max) || 0;
+    if(cantidad > maxStock){
+        alert("La cantidad supera el stock disponible");
+        return;
+    }
+
+    // Preparar datos a enviar
+    const bodyData = { id: id, cantidad: cantidad };
+    if(!isNaN(precioEspecial) && precioEspecial > 0){
+        bodyData.precio = precioEspecial; // Solo enviar precio si es válido
+    }
+
     try{
         const res = await fetch("/vender_producto",{
             method:"POST",
             headers:{"Content-Type":"application/json"},
-            body: JSON.stringify({id:id,cantidad:cantidad,precio:precio})
+            body: JSON.stringify(bodyData)
         });
 
         const data = await res.json();
 
         if(res.ok){
             alert(data.mensaje);
+            await cargar(); // actualizar stock en la UI
         } else {
-            alert(data.mensaje || "Error en la venta");
+            alert(data.mensaje || `Error en la venta (código ${res.status})`);
         }
-
-        cargar();
 
     } catch(err){
         console.error("Error en la venta",err);
