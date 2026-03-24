@@ -343,7 +343,7 @@ def api_dashboard():
             # Ventas por semana
             cursor.execute("""
                 SELECT 
-                    DATE_TRUNC('week', fecha) as semana,
+                    DATE_TRUNC('week', COALESCE(fecha, CURRENT_TIMESTAMP)) as semana,
                     SUM(cantidad),
                     SUM(total)
                 FROM ventas
@@ -380,6 +380,23 @@ def api_dashboard():
             "unidades": [],
             "ganancias": []
         })
+    
+# -------------------------
+# FIX FECHAS VACÍAS
+# -------------------------
+try:
+    with conn.cursor() as cursor:
+        cursor.execute("""
+            UPDATE ventas
+            SET fecha = CURRENT_TIMESTAMP
+            WHERE fecha IS NULL;
+        """)
+        conn.commit()
+        print("✅ Fechas corregidas correctamente")
+
+except Exception as e:
+    conn.rollback()
+    print("❌ Error corrigiendo fechas:", e)
 
 # -------------------------
 # SERVIDOR
