@@ -65,24 +65,16 @@ except Exception as e:
 
 
 # -------------------------
-# FIX COLUMNAS FALTANTES (AQUÍ VA)
+# FIX COLUMNAS FALTANTES (SEGURO)
 # -------------------------
 try:
     with conn.cursor() as cursor:
         cursor.execute("""
-        SELECT column_name 
-        FROM information_schema.columns 
-        WHERE table_name='ventas' AND column_name='usuario'
+        ALTER TABLE ventas 
+        ADD COLUMN IF NOT EXISTS usuario VARCHAR(100);
         """)
-        
-        existe = cursor.fetchone()
-
-        if not existe:
-            print("⚠️ Agregando columna 'usuario'...")
-            cursor.execute("ALTER TABLE ventas ADD COLUMN usuario VARCHAR(100);")
-            conn.commit()
-        else:
-            print("✅ Columna usuario OK")
+        conn.commit()
+        print("✅ Columna usuario verificada correctamente")
 
 except Exception as e:
     conn.rollback()
