@@ -53,30 +53,26 @@ async function cargarDashboard(){
 const res = await fetch("/api/dashboard")
 const data = await res.json()
 
-const tbody = document.querySelector("#tabla-dashboard tbody")
+console.log("DATA:", data)
 
+const tbody = document.querySelector("#tabla-dashboard tbody")
 tbody.innerHTML=""
 
-let ventas = 0
-let unidades = 0
+// 🔥 USAR LOS ARRAYS CORRECTOS
+for(let i=0; i<data.semanas.length; i++){
 
-data.forEach(d=>{
+    tbody.innerHTML += `
+    <tr>
+    <td>${data.semanas[i]}</td>
+    <td>${data.unidades[i]}</td>
+    <td>$${data.ganancias[i].toLocaleString()}</td>
+    </tr>
+    `
+}
 
-ventas += d.total_ganancias
-unidades += d.total_unidades
-
-tbody.innerHTML += `
-<tr>
-<td>${d.semana}</td>
-<td>${d.total_unidades}</td>
-<td>$${d.total_ganancias.toLocaleString()}</td>
-</tr>
-`
-
-})
-
-document.getElementById("ventasTotales").innerText = "$"+ventas.toLocaleString()
-document.getElementById("unidadesTotales").innerText = unidades
+// 🔥 TOTALES DIRECTOS
+document.getElementById("ventasTotales").innerText = "$" + data.total_ventas.toLocaleString()
+document.getElementById("unidadesTotales").innerText = data.total_unidades
 
 }
 
