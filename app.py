@@ -48,7 +48,7 @@ try:
             usuario VARCHAR(100)
         )
         """)
-        # Tabla usuarios: primero eliminamos si existe (para evitar columnas mal creadas)
+        # Tabla usuarios
         cursor.execute("DROP TABLE IF EXISTS usuarios CASCADE;")
         cursor.execute("""
         CREATE TABLE usuarios(
@@ -59,7 +59,7 @@ try:
             rol VARCHAR(20)
         )
         """)
-        # Insertamos usuarios iniciales
+        # Insertar usuarios iniciales
         cursor.execute("""
         INSERT INTO usuarios (nombre, usuario, password, rol) VALUES
         ('Administrador','admin','admin123','admin'),
@@ -74,7 +74,7 @@ except Exception as e:
     print("Error inicializando la base de datos:", e)
 
 # -------------------------
-# PAGINAS
+# PÁGINAS
 # -------------------------
 @app.route("/")
 def inicio():
@@ -256,22 +256,33 @@ def vender_producto():
         data = request.get_json()
         id = int(data["id"])
         cantidad = int(data["cantidad"])
-        precio_especial = float(data.get("precio") or 0)
         usuario_actual = session["usuario"]
 
         with conn.cursor() as cursor:
             cursor.execute("SELECT nombre,precio,cantidad FROM productos WHERE id=%s",(id,))
             row = cursor.fetchone()
             if not row:
-                return jsonify({"mensaje":"Producto no encontrado"}),404  # <-- Asegúrate de este check
+                return jsonify({"mensaje":"Producto no encontrado"}),404
 
             nombre_producto, precio_real, stock_actual = row
+
             if cantidad > stock_actual:
                 return jsonify({"mensaje":"Stock insuficiente"}),400
 
-            precio_unitario = precio_especial if precio_especial>0 else float(precio_real)
+            # -----------------------------
+            # Manejo seguro de precio especial
+            # -----------------------------
+            try:
+                precio_especial = float(data.get("precio"))
+                if precio_especial <= 0:
+                    precio_especial = None
+            except (TypeError, ValueError):
+                precio_especial = None
+
+            precio_unitario = precio_especial if precio_especial is not None else float(precio_real)
             total_venta = precio_unitario * cantidad
 
+            # Actualizar stock y registrar venta
             cursor.execute("UPDATE productos SET cantidad = cantidad - %s WHERE id=%s",(cantidad,id))
             cursor.execute("""
                 INSERT INTO ventas
@@ -281,9 +292,10 @@ def vender_producto():
             conn.commit()
 
         return jsonify({"mensaje":"venta realizada"})
+
     except Exception as e:
         conn.rollback()
-        print("ERROR VENTA:",e)  # <-- imprime el error real
+        print("ERROR VENTA:", e)
         return jsonify({"mensaje":"Error en la venta"}),500
 
 # -------------------------
