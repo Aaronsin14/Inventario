@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, jsonify, session
 import psycopg2
 import os
+from functools import wraps  # ✅ NUEVO
 
 app = Flask(__name__)
 app.secret_key = "mi_clave_secreta_123"
@@ -8,6 +9,17 @@ app.secret_key = "mi_clave_secreta_123"
 UPLOAD = "static/uploads"
 if not os.path.exists(UPLOAD):
     os.makedirs(UPLOAD)
+
+# -------------------------
+# ✅ DECORADOR ADMIN
+# -------------------------
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if "rol" not in session or session["rol"] != "admin":
+            return "No autorizado", 403
+        return f(*args, **kwargs)
+    return decorated_function
 
 # -------------------------
 # CONEXIÓN BASE DE DATOS
@@ -103,10 +115,12 @@ def inicio():
     return render_template("inicio.html")
 
 @app.route("/agregar")
+@admin_required  # ✅ NUEVO
 def agregar_pagina():
     return render_template("agregar.html")
 
 @app.route("/inventario")
+@admin_required  # ✅ NUEVO
 def inventario():
     return render_template("inventario.html")
 
@@ -119,6 +133,7 @@ def historial_pagina():
     return render_template("historial.html")
 
 @app.route("/dashboard")
+@admin_required  # ✅ NUEVO
 def dashboard_pagina():
     return render_template("dashboard.html")
 
@@ -167,9 +182,9 @@ def usuario_actual():
 @app.route("/productos")
 def productos():
     try:
-        # 👇 AGREGA ESTA VALIDACIÓN
+        # 👇 YA LO TENÍAS (BIEN)
         if "usuario" not in session:
-            return jsonify([])  # evita error en frontend
+            return jsonify([])
 
         with conn.cursor() as cursor:
             cursor.execute("""
@@ -203,6 +218,7 @@ def productos():
 # AGREGAR PRODUCTO
 # -------------------------
 @app.route("/agregar_producto", methods=["POST"])
+@admin_required  # ✅ NUEVO
 def agregar_producto():
     try:
         codigo = request.form.get("codigo")
@@ -267,7 +283,6 @@ def vender_producto():
             if cantidad > stock_actual:
                 return jsonify({"mensaje":"Stock insuficiente"}),400
 
-            # Precio especial seguro
             try:
                 precio_especial = float(data.get("precio"))
                 if precio_especial <= 0:
@@ -300,6 +315,11 @@ def vender_producto():
 # -------------------------
 @app.route("/api/historial")
 def api_historial():
+
+    # ✅ NUEVO (solo logueado)
+    if "usuario" not in session:
+        return jsonify([])
+
     try:
         with conn.cursor() as cursor:
             cursor.execute("""
@@ -327,24 +347,21 @@ def api_historial():
 
     return jsonify(historial)
 
-
 # -------------------------
 # DASHBOARD
 # -------------------------
 @app.route("/api/dashboard")
+@admin_required  # ✅ NUEVO
 def api_dashboard():
     try:
         with conn.cursor() as cursor:
 
-            # Total dinero vendido
             cursor.execute("SELECT COALESCE(SUM(total),0) FROM ventas")
             total_ventas = cursor.fetchone()[0]
 
-            # Total unidades vendidas
             cursor.execute("SELECT COALESCE(SUM(cantidad),0) FROM ventas")
             total_unidades = cursor.fetchone()[0]
 
-            # Ventas por semana
             cursor.execute("""
                 SELECT 
                     DATE_TRUNC('week', COALESCE(fecha, CURRENT_TIMESTAMP)) as semana,
@@ -384,7 +401,7 @@ def api_dashboard():
             "unidades": [],
             "ganancias": []
         })
-    
+
 # -------------------------
 # FIX FECHAS VACÍAS
 # -------------------------
