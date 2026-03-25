@@ -99,3 +99,27 @@ buscar?.addEventListener("keyup",()=>{
 
 // CARGAR PRODUCTOS AL INICIO
 cargar()
+
+// -------------------------
+// AGREGAR PRODUCTO (FORM)
+// -------------------------
+const form = document.getElementById("form");
+
+if(form){
+    form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const formData = new FormData(form);
+
+        const res = await fetch("/agregar_producto", {
+            method: "POST",
+            body: formData
+        });
+
+        const data = await res.json();
+
+        alert(data.mensaje || "Producto agregado");
+
+        form.reset();
+    });
+}
