@@ -2,8 +2,14 @@ from flask import Flask, render_template, request, jsonify, session
 import psycopg2
 import os
 from functools import wraps  # ✅ NUEVO
-from flask import redirect
+import cloudinary
+import cloudinary.uploader
 
+cloudinary.config(
+    cloud_name="busta",
+    api_key="491611916593886",
+    api_secret="Et9hNNN5lAPAAPJB1PwB2r2wGEo"
+)
 app = Flask(__name__)
 app.secret_key = "mi_clave_secreta_123"
 
@@ -170,7 +176,7 @@ def login():
 @app.route("/logout")
 def logout():
     session.clear()
-    return redirect("/")
+    return jsonify({"mensaje":"ok"})
 
 @app.route("/api/usuario_actual")
 def usuario_actual():
@@ -233,9 +239,8 @@ def agregar_producto():
         foto = request.files.get("foto")
         ruta = ""
         if foto and foto.filename != "":
-            nombre_foto = foto.filename
-            ruta = "/static/uploads/" + nombre_foto
-            foto.save(os.path.join(UPLOAD, nombre_foto))
+             resultado = cloudinary.uploader.upload(foto)
+             ruta = resultado["secure_url"]
 
         with conn.cursor() as cursor:
             cursor.execute("""
