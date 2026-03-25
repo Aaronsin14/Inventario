@@ -19,7 +19,7 @@ async function cargar(){
 
         lista.innerHTML += `
         <div class="producto">
-            <img src="${p.foto}" onerror="this.src='https://via.placeholder.com/300'">
+            <img src="${p.foto || 'https://via.placeholder.com/300'}">
             <div class="producto-info">
                 <h3>${p.nombre}</h3>
                 <p><b>Código:</b> ${p.codigo}</p>
