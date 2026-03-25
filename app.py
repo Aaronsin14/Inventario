@@ -6,10 +6,11 @@ import cloudinary
 import cloudinary.uploader
 
 cloudinary.config(
-    cloud_name="busta",
-    api_key="491611916593886",
-    api_secret="Et9hNNN5lAPAAPJB1PwB2r2wGEo"
+    cloud_name=os.getenv("dp5xiubsa"),
+    api_key=os.getenv("491611916593886"),
+    api_secret=os.getenv("Et9hNNN5lAPAAPJB1PwB2r2wGEo")
 )
+
 app = Flask(__name__)
 app.secret_key = "mi_clave_secreta_123"
 
