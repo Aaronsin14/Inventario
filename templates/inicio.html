@@ -31,8 +31,9 @@
         <button onclick="cerrarSesion()">Cerrar Sesión</button>
 
         <script>
-            function cerrarSesion() {
-            window.location.href = "/logout";
+            async function cerrarSesion() {
+                await fetch("/logout", { method: "GET" }); // borra la sesión en backend
+                window.location.href = "/";           // redirige al login
             }
         </script>
 
