@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, session
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for
 import psycopg2
 import os
 from functools import wraps  # ✅ NUEVO
@@ -177,7 +177,7 @@ def login():
 @app.route("/logout")
 def logout():
     session.clear()
-    return jsonify({"mensaje":"ok"})
+    return redirect(url_for("inicio"))
 
 @app.route("/api/usuario_actual")
 def usuario_actual():
